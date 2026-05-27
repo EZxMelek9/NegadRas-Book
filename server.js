@@ -183,7 +183,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const broadcastMsg = text.replace("/broadcast ", "");
             let count = 0;
             for (const uid in users) {
-                await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከዕንቆጳዝዮን</b>\n\n${broadcastMsg}`, parse_mode: "HTML" });
+                await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}`, parse_mode: "HTML" });
                 count++;
             }
             await sendTelegram('sendMessage', { chat_id: chatId, text: `✅ መልእክቱ ለ ${count} ተጠቃሚዎች ተልኳል።` });
@@ -212,7 +212,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const savedUserData = users[targetId];
             const finalPassword = savedUserData && savedUserData.generated_password ? savedUserData.generated_password : "በእርስዎ ስም የተዘጋጀ ፓስወርድ";
 
-            const warningMsg = `📩 <b>ከነጋድራስ የተላከ መጽሐፍ:</b>\n\n` +
+            const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
                 `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF) ተያይዟል።\n\n` +
                 `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${finalPassword}</code>\n\n` +
                 `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግ ያስቀጣል።`;
