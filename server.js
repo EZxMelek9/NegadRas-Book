@@ -95,16 +95,22 @@ app.post('/api/telegram-webhook', async (req, res) => {
     }
 
     // --- የ /start ኮማንድ ---
+ // --- የ /start ኮማንድ ---
     if (text === "/start") {
-        const welcomeText = `📚 እንኳን ደህና መጡ ${msg.from.first_name}! 🌟\n\n` +
-            `ወደ ነጋድራስ የመጽሐፍ መደብር እንኳን በሰላም መጡ።\n\n` +
-            `ጥራት ያላቸውን መጽሐፍት እዚህ ያገኛሉ። መጽሐፍ ለመግዛት ከታች ያለውን '📚 መጽሐፍ ግዛ' የሚለውን ይጫኑ።`;
+        const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
+            `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
+            `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
+            `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
+            `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
+            `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON \n\n` +
+            `🛒 መጽሐፉን ለማግኘት ከታች ያለውን <b>'📚 መጽሐፍ'</b> የሚለውን በተን ይጫኑ።`;
 
         await sendTelegram('sendMessage', {
             chat_id: chatId,
             text: welcomeText,
+            parse_mode: "HTML",
             reply_markup: {
-                keyboard: [[{ text: "📚 መጽሐፍ ግዛ", web_app: { url: WEB_URL } }]],
+                keyboard: [[{ text: "📚 መጽሐፍ", web_app: { url: WEB_URL } }]],
                 resize_keyboard: true
             }
         });
