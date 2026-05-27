@@ -37,9 +37,10 @@ function saveUsers(users) {
     fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
-// 🔐 በሙሉ ስም እና በሙሉ ስልክ ቁጥር ፓስወርድ የመፍጠሪያ ፈንክሽን
+// 🔐 በሙሉ ስም (የአባት ስም ጨምሮ) እና በስልክ ቁጥር ፓስወርድ የመፍጠሪያ ፈንክሽን
 function generatePassword(name, phone) {
-    let cleanName = name.trim();
+    // በስሞቹ መካከል ያለውን ስፔስ (Space) በሙሉ ወደ ታች ሰረዝ (_) ይቀይራል
+    let cleanName = name.trim().replace(/\s+/g, '_');
     let cleanPhone = phone.trim();
     return `${cleanName}@${cleanPhone}`; 
 }
@@ -83,14 +84,14 @@ app.post('/api/order', async (req, res) => {
 
         const adminMsg = `📚 <b>አዲስ የመጽሐፍ ትዕዛዝ</b>\n\n` +
             `📖 <b>መጽሐፍ:</b> ${data.book_title}\n` +
-            `👤 <b>ስም:</b> ${data.name}\n` +
+            `👤 <b>በዳሽቦርድ የሞላው ስም:</b> ${data.name}\n` +
             `📞 <b>ስልክ:</b> <code>${data.phone}</code>\n` +
             `📧 <b>ኢሜል:</b> ${data.email}\n` +
             `✈️ <b>Telegram:</b> ${data.telegram_username}\n` +
             `💰 <b>ዋጋ:</b> ${data.price} ETB\n\n` +
             `🆔 <b>የደንበኛ ID:</b> <code>${data.user_id || "N/A"}</code>\n` +
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
-            `🔐 <b>ለዚህ ደንበኛ የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
+            `🔐 <b>ለዚህ ደንበኛ በቋሚነት የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
             `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${data.user_id} [መልእክት]</code>\n` +
             `📥 <b>ፋይል ለመላክ:</b> ፒዲኤፉን ስትልክ Caption ላይ: <code>/sendfile ${data.user_id}</code>`;
 
@@ -178,7 +179,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
     // --- የአድሚን ኮማንዶች ---
     if (isAdmin) {
         
-        // 👥 አዲስ ኮማንድ፦ የተጠቃሚዎችን ዝርዝር ለማየት (/users)
+        // 👥 የተጠቃሚዎችን ዝርዝር ለማየት (/users)
         if (text === "/users") {
             const userKeys = Object.keys(users);
             if (userKeys.length === 0) {
@@ -211,12 +212,20 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const targetId = parts[1];
             const replyText = text.replace(`/reply ${targetId} `, "");
             
-            const savedUserData = users[targetId];
-            const telegramName = savedUserData && savedUserData.name ? savedUserData.name : "ያልታወቀ ተጠቃሚ";
+            let telegramName = "ተጠቃሚ";
+            
+            // 💡 ሰርቨሩ ቢታደስ እንኳ የቴሌግራም ፈርስት ኔምን ቀጥታ ከቴሌግራም API ላይ በደህንነት መፈለጊያ ዘዴ
+            try {
+                const chatInfo = await sendTelegram('getChat', { chat_id: targetId });
+                if (chatInfo && chatInfo.data && chatInfo.data.result) {
+                    telegramName = chatInfo.data.result.first_name;
+                }
+            } catch (e) {
+                if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
+            }
 
             await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}`, parse_mode: "HTML" });
             
-            // 👤 እዚህ ጋር የተጠቃሚውን ስም እና አይዲ አብሮ ያሳያል
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
                 text: `✅ ምላሹ ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
@@ -233,10 +242,28 @@ app.post('/api/telegram-webhook', async (req, res) => {
         // 📥 ፋይል መላክ (Document + /sendfile [ID])
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const targetId = msg.caption.split(" ")[1];
+            let telegramName = "ተጠቃሚ";
+            
+            // 💡 ሰርቨሩ ቢታደስ እንኳ የቴሌግራም ፈርስት ኔምን ቀጥታ ከቴሌግራም API ላይ መፈለጊያ ዘዴ
+            try {
+                const chatInfo = await sendTelegram('getChat', { chat_id: targetId });
+                if (chatInfo && chatInfo.data && chatInfo.data.result) {
+                    telegramName = chatInfo.data.result.first_name;
+                }
+            } catch (e) {
+                if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
+            }
             
             const savedUserData = users[targetId];
-            const finalPassword = savedUserData && savedUserData.generated_password ? savedUserData.generated_password : "በእርስዎ ስም የተዘጋጀ ፓስወርድ";
-            const telegramName = savedUserData && savedUserData.name ? savedUserData.name : "ያልታወቀ ተጠቃሚ";
+            
+            // 🔑 መደናገር እንዳይፈጠር፦ በፋይል ውስጥ ፓስወርዱ ካልተገኘ (ሰርቨሩ ስለታደሰ)፣ ለአድሚኑ ቀድሞ ከመጣው መልዕክት ወይም ከጉግል ሺት ላይ አይተህ በደንበኛው ሙሉ ስምና ስልክ የቆለፍከውን ፓስወርድ እንድታውቅ፣ ቦቱ እዚህ ጋር የ ID መጨረሻውን ተጠቅሞ መከላከያ ፓስወርድ ይፈጥራል (ደንበኛው እንዳይዘጋ)
+            let finalPassword;
+            if (savedUserData && savedUserData.generated_password) {
+                finalPassword = savedUserData.generated_password;
+            } else {
+                const lastFourId = targetId.substring(targetId.length - 4);
+                finalPassword = `CUSTOMER@${lastFourId}`; 
+            }
 
             const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
                 `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF) ተያይዟል።\n\n` +
@@ -250,7 +277,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 parse_mode: "HTML"
             });
             
-            // 👤 እዚህ ጋር የተጠቃሚውን ስም እና አይዲ አብሮ ያሳያል
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
                 text: `✅ ፋይሉ እና ፓስወርዱ [ <code>${finalPassword}</code> ] ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
@@ -263,7 +289,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
                 chat_id: adminId,
-                text: `📬 <b>መልእክት ከደንበኛ:</b>\n\n👤 ስም: ${msg.from.first_name}\n🆔 ID: <code>${userId}</code>\n\n💬 መልእክት: ${text}`,
+                text: `📬 <b>መልእክት ከደንበኛ:</b>\n\n👤 <b>የቴሌግራም ስም:</b> ${msg.from.first_name}\n🆔 ID: <code>${userId}</code>\n\n💬 መልእክት: ${text}`,
                 parse_mode: "HTML"
             });
         }
