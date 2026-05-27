@@ -1,5 +1,5 @@
 const express = require('express');
-const axios = require('axios'); // ‹-- ተስተካክሏል፡ axios እዚህ ጋር እንዲገባ ተደርጓል
+const axios = require('axios');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
@@ -49,7 +49,6 @@ async function sendTelegram(method, data) {
 app.post('/api/order', async (req, res) => {
     try {
         const data = req.body;
-        // ‹-- ተስተካክሏል፡ የሊንክ ስህተት እንዳይፈጠር ማርክዳውኑ ወደ HTML ተቀይሯል
         const adminMsg = `📚 <b>አዲስ የመጽሐፍ ትዕዛዝ</b>\n\n` +
             `📖 <b>መጽሐፍ:</b> ${data.book_title}\n` +
             `👤 <b>ስም:</b> ${data.name}\n` +
@@ -67,7 +66,7 @@ app.post('/api/order', async (req, res) => {
                 chat_id: adminId,
                 photo: data.receipt_url,
                 caption: adminMsg,
-                parse_mode: "HTML" // ‹-- ወደ HTML ተቀይሯል
+                parse_mode: "HTML"
             });
         }
 
@@ -99,7 +98,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
     if (text === "/start") {
         const welcomeText = `📚 እንኳን ደህና መጡ ${msg.from.first_name}! 🌟\n\n` +
             `ወደ ነጋድራስ የመጽሐፍ መደብር እንኳን በሰላም መጡ።\n\n` +
-            `ጥራት ያላቸውን መጽሐፍት እዚህ ያገኛሉ። መጽሐፍ ለመግዛት ከታች ያለውን '📚 መጽሐፍ ግዛ' የሚለውን ይጫኑ Light.`;
+            `ጥራት ያላቸውን መጽሐፍት እዚህ ያገኛሉ። መጽሐፍ ለመግዛት ከታች ያለውን '📚 መጽሐፍ ግዛ' የሚለውን ይጫኑ።`;
 
         await sendTelegram('sendMessage', {
             chat_id: chatId,
@@ -157,7 +156,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
                 chat_id: adminId,
-                text: `📬 <b>מלእክት ከደንበኛ:</b>\n\n👤 ስም: ${msg.from.first_name}\n🆔 ID: <code>${userId}</code>\n\n💬 መልእክት: ${text}`,
+                text: `📬 <b>መልእክት ከደንበኛ:</b>\n\n👤 ስም: ${msg.from.first_name}\n🆔 ID: <code>${userId}</code>\n\n💬 መልእክት: ${text}`,
                 parse_mode: "HTML"
             });
         }
