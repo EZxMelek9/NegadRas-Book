@@ -65,7 +65,12 @@
             <div>
                 <h2 id="book-title" class="text-xl font-bold text-white">ነጋድራሱ</h2>
                 <h5 id="book-author" class="text-lg font-semibold text-slate-400">በናትናኤል ብሩክ</h5>
-                <p id="book-desc" class="text-xs text-slate-400 mt-2 leading-relaxed">የነጋድራሱ ገብረሕይወት ባይከዳኝን የሕይወት ታሪክ፣ የኢኮኖሚና የፖለቲካ ፍልስፍና የሚተነትን ድንቅ መጽሐፍ።</p>
+                <p class="book-description">
+    "ነጋድራሱ" በአዘጋጅ ናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ አማርኛ የትሬዲንግ ስነልቦና መጽሐፍ ነው። የቀደሙት የንግድ ጄኔራሎች ነጋድራሶች በዕውቀትና በሥርዓት የንግድ መስመሩን እንደመሩት ሁሉ፣ ይህ መጽሐፍ የዛሬውን ወጣት ከስሜት ማዕበል ወደ አዕምሮ ሰላም በመውሰድ በፎሬክስ፣ ክሪፕቶ እና በህይወት ስኬት ላይ እውነተኛ መሪ ያደርገዋል።
+</p>
+<p class="ecosystem-tag" style="text-align: center; color: #00ffcc; font-size: 14px; font-weight: bold; margin-top: 10px;">
+    ⚡ Powered by ETN ECOSYSTEM
+</p>
             </div>
             <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
                 <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ዋጋ፡</span>
@@ -131,7 +136,7 @@
             1: {
                 title: "ነጋድራሱ",
                 author: "ናትናኤል ብሩክ",
-                desc: "የነጋድራሱ ገብረሕይወት ባይከዳኝን የሕይወት ታሪክ፣ የኢኮኖሚና የፖለቲካ ፍልስፍና የሚተነትን ድንቅ መጽሐፍ።", 
+                desc: "desc: "\"ነጋድራሱ\" በአዘጋጅ ናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ አማርኛ የትሬዲንግ ስነልቦና መጽሐፍ ነው። የቀደሙት የንግድ ጄኔራሎች ነጋድራሶች በዕውቀትና በሥርዓት የንግድ መስመሩን እንደመሩት ሁሉ፣ ይህ መጽሐፍ የዛሬውን ወጣት ከስሜት ማዕበል ወደ አዕምሮ ሰላም በመውሰድ በፎሬክስ፣ ክሪፕቶ እና በህይወት ስኬት ላይ እውነተኛ መሪ ያደርገዋል።",", 
                 price: "600.00", 
                 color: "#0ea5e9", 
                 img: "https://res.cloudinary.com/dlthi9a6h/image/upload/v1779704486/photo_2026-04-29_18-37-39_piyazt.jpg" 
@@ -240,15 +245,16 @@
                 };
 
                 // Send to our Render Backend
-                const response = await fetch('/api/order', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(orderData)
+                // Send to our Render Backend
+                const response = await fetch('https://negadras-book.onrender.com/api/order', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
                 });
 
                 if (response.ok) {
                     showToast(currentLang === 'am' ? "✅ ትዕዛዝዎ በተሳካ ሁኔታ ተልኳል!" : "✅ Order sent successfully!");
-                    setTimeout(() => tg.close(), 3000);
+                    setTimeout(() => tg.close(), 6000);
                 } else {
                     throw new Error("Failed to send order to server");
                 }
