@@ -46,6 +46,7 @@ async function sendTelegram(method, data) {
 }
 
 // 1. ከዳሽቦርዱ ትዕዛዝ ሲመጣ
+// 1. ከዳሽቦርዱ ትዕዛዝ ሲመጣ
 app.post('/api/order', async (req, res) => {
     try {
         const data = req.body;
@@ -56,11 +57,12 @@ app.post('/api/order', async (req, res) => {
             `📧 <b>ኢሜል:</b> ${data.email}\n` +
             `✈️ <b>Telegram:</b> ${data.telegram_username}\n` +
             `💰 <b>ዋጋ:</b> ${data.price} ETB\n\n` +
-            `🆔 <b>የደንበኛ ID:</b> <code>${req.body.user_id || "N/A"}</code>\n` +
+            `🆔 <b>የደንበኛ ID:</b> <code>${data.user_id || "N/A"}</code>\n` +
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
-            `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${req.body.user_id} [መልእክት]</code>\n` +
-            `📥 <b>ፋይል ለመላክ:</b> ፒዲኤፉን ስትልክ Caption ላይ: <code>/sendfile ${req.body.user_id}</code>`;
+            `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${data.user_id} [መልእክት]</code>\n` +
+            `📥 <b>ፋይል ለመላክ:</b> ፒዲኤፉን ስትልክ Caption ላይ: <code>/sendfile ${data.user_id}</code>`;
 
+        // 1. ለአድሚኖቹ የትዕዛዝ መረጃ መላክ
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendPhoto', {
                 chat_id: adminId,
@@ -70,8 +72,22 @@ app.post('/api/order', async (req, res) => {
             });
         }
 
+        // 2. ለደንበኛው (ለገዢው) ማረጋገጫ መልዕክት መላክ
+        if (data.user_id && data.user_id !== "N/A") {
+            const customerSuccessMsg = `✅ <b>ትዕዛዝዎ በተሳካ ሁኔታ ወደ አድሚኑ ተልኳል!</b>\n\n` +
+                `እባክዎን አድሚኑ የክፍያ ደረሰኝዎን አረጋግጦ በዚሁ ቦት በኩል መጽሐፉን (PDF) እስከሚልክልዎ ድረስ በትዕግስት ይጠብቁ።\n\n` +
+                `ስላዘዙ እናመሰግናለን! 🙏`;
+                
+            await sendTelegram('sendMessage', {
+                chat_id: data.user_id,
+                text: customerSuccessMsg,
+                parse_mode: "HTML"
+            });
+        }
+
         res.status(200).json({ success: true });
     } catch (error) {
+        console.error("Order processing error:", error);
         res.status(500).json({ success: false });
     }
 });
