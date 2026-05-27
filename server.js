@@ -17,6 +17,7 @@ app.use(express.static(__dirname));
 const BOT_TOKEN = process.env.BOT_TOKEN;
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : ["5569487012"];
 const WEB_URL = process.env.WEB_URL; // Render URL
+const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
 
 // ዳታቤዝ ፋይል (ቀላል JSON ፋይል ተጠቃሚዎችን ለመመዝገብ)
 const DB_FILE = path.join(__dirname, 'users.json');
@@ -36,6 +37,19 @@ function saveUsers(users) {
     fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
+// 🔐 በስም እና በስልክ ቁጥር ፓስወርድ የመፍጠሪያ ፈንክሽን
+function generatePassword(name, phone) {
+    // ከስም ላይ የመጀመሪያዎቹን 3 ፊደላት መውሰድ (ያለ ስፔስ እና ወደ እንግሊዝኛ ካፒታል በመቀየር - እንግሊዝኛ ከሆነ)
+    let cleanName = name.replace(/[^a-zA-Z]/g, '').substring(0, 3).toUpperCase();
+    if (!cleanName) cleanName = "NEG"; // ስሙ በአማርኛ ከተጻፈ ነባሪ "NEG" ይወስዳል
+    
+    // ከስልክ ቁጥሩ ላይ የመጨረሻዎቹን 4 ቁጥሮች መውሰድ
+    let cleanPhone = phone.replace(/[^0-9]/g, '');
+    let lastFourDigits = cleanPhone.substring(cleanPhone.length - 4);
+    
+    return `${cleanName}@${lastFourDigits}`; // ምሳሌ፦ NEG@5678 ወይም YON@1234
+}
+
 // ቴሌግራም መልእክት መላኪያ ፈንክሽን
 async function sendTelegram(method, data) {
     try {
@@ -45,11 +59,34 @@ async function sendTelegram(method, data) {
     }
 }
 
-// 1. ከዳሽቦርዱ ትዕዛዝ ሲመጣ
-// 1. ከዳሽቦርዱ ትዕዛዝ ሲመጣ
+// 1. ከዳሽንቦርዱ ትዕዛዝ ሲመጣ
 app.post('/api/order', async (req, res) => {
     try {
         const data = req.body;
+        
+        // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር
+        const customerPassword = generatePassword(data.name, data.phone);
+        
+        // መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን አብረን እንጨምራለን
+        const sheetData = { ...data, customer_password: customerPassword };
+
+        // --- 📥 መረጃውን ወደ Google Sheet የመላክ አሠራር ---
+        if (GOOGLE_SHEET_URL) {
+            axios.post(GOOGLE_SHEET_URL, sheetData)
+                .then(() => console.log("✅ Data successfully synced with Google Sheets!"))
+                .catch(err => console.error("❌ Google Sheets Sync Error:", err.message));
+        }
+
+        // በፋይል ውስጥ የደንበኛውን ፓስወርድ አስቀምጦ መያዝ (በኋላ /sendfile ሲደረግ ሰርቨሩ እንዲያስታውሰው)
+        const users = loadUsers();
+        if (data.user_id) {
+            if (!users[data.user_id]) users[data.user_id] = {};
+            users[data.user_id].generated_password = customerPassword;
+            users[data.user_id].phone = data.phone;
+            users[data.user_id].name = data.name;
+            saveUsers(users);
+        }
+
         const adminMsg = `📚 <b>አዲስ የመጽሐፍ ትዕዛዝ</b>\n\n` +
             `📖 <b>መጽሐፍ:</b> ${data.book_title}\n` +
             `👤 <b>ስም:</b> ${data.name}\n` +
@@ -59,6 +96,7 @@ app.post('/api/order', async (req, res) => {
             `💰 <b>ዋጋ:</b> ${data.price} ETB\n\n` +
             `🆔 <b>የደንበኛ ID:</b> <code>${data.user_id || "N/A"}</code>\n` +
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
+            `🔐 <b>ለዚህ ደንበኛ የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
             `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${data.user_id} [መልእክት]</code>\n` +
             `📥 <b>ፋይል ለመላክ:</b> ፒዲኤፉን ስትልክ Caption ላይ: <code>/sendfile ${data.user_id}</code>`;
 
@@ -111,34 +149,32 @@ app.post('/api/telegram-webhook', async (req, res) => {
     }
 
     // --- የ /start ኮማንድ ---
- // --- የ /start ኮማንድ ---
-    // --- የ /start ኮማንድ ---
-if (text === "/start") {
-    const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
-        `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
-        `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
-        `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
-        `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
-        `• መጽሐፉን ለመግዛት እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን ትልቁን <b>Menu Button</b> ይጫኑ።\n\n` +
-        `────────────────────\n\n` +
-        `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
-        `This bot is the official place to get <b>"The Negadras"</b>, the first comprehensive Amharic trading psychology book compiled by Natnael Biruk.\n\n` +
-        `Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.\n\n` +
-        `⚠️ <b>HOW TO BUY:</b>\n` +
-        `• To order the book, please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
-        `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
-        `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON`;
+    if (text === "/start") {
+        const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
+            `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
+            `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
+            `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
+            `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
+            `• መጽሐፉን ለመግዛት እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን ትልቁን <b>Menu Button</b> ይጫኑ。\n\n` +
+            `────────────────────\n\n` +
+            `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
+            `<i>"The Adwa of today is an economic Adwa."</i>\n\n` +
+            `This bot is the official place to get <b>"The Negadras"</b>, the first comprehensive Amharic trading psychology book compiled by Natnael Biruk.\n\n` +
+            `Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.\n\n` +
+            `⚠️ <b>HOW TO BUY:</b>\n` +
+            `• To order the book, please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
+            `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
+            `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON`;
 
-    await sendTelegram('sendMessage', {
-        chat_id: chatId,
-        text: welcomeText,
-        parse_mode: "HTML",
-        // የድሮውን የኪይቦርድ በተን ሙሉ በሙሉ ለማጥፋት እና ለማጽዳት፡
-        reply_markup: {
-            remove_keyboard: true
-        }
-    });
-}
+        await sendTelegram('sendMessage', {
+            chat_id: chatId,
+            text: welcomeText,
+            parse_mode: "HTML",
+            reply_markup: {
+                remove_keyboard: true
+            }
+        });
+    }
 
     // --- የአድሚን ኮማንዶች ---
     if (isAdmin) {
@@ -171,14 +207,23 @@ if (text === "/start") {
         // 📥 ፋይል መላክ (Document + /sendfile [ID])
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const targetId = msg.caption.split(" ")[1];
-            const warningMsg = `📩 <b>ከዕንቆጳዝዮን የተላከ መጽሐፍ:</b>\n\nስላዘዙ እናመሰግናለን! መጽሐፉ ተያይዟል።\n\n⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ የባለቤትነት መብቱ በህግ የተጠበቀ ነው። ለሌላ ማጋራት ወይም መሸጥ በጥብቅ የተከለከለ እና በህግ ያስቀጣል።`;
+            
+            // በሲስተሙ የተቀመጠውን የዚህን ደንበኛ ፓስወርድ ፈልጎ ማውጣት
+            const savedUserData = users[targetId];
+            const finalPassword = savedUserData && savedUserData.generated_password ? savedUserData.generated_password : "በእርስዎ ስም የተዘጋጀ ፓስወርድ";
+
+            const warningMsg = `📩 <b>ከነጋድራስ የተላከ መጽሐፍ:</b>\n\n` +
+                `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF) ተያይዟል።\n\n` +
+                `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${finalPassword}</code>\n\n` +
+                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግ ያስቀጣል።`;
+                
             await sendTelegram('sendDocument', {
                 chat_id: targetId,
                 document: msg.document.file_id,
                 caption: warningMsg,
                 parse_mode: "HTML"
             });
-            await sendTelegram('sendMessage', { chat_id: chatId, text: `✅ ፋይሉ ለ ${targetId} ተልኳል።` });
+            await sendTelegram('sendMessage', { chat_id: chatId, text: `✅ ፋይሉ እና ፓስወርዱ [ ${finalPassword} ] ለተጠቃሚ ${targetId} ተልኳል።` });
         }
     } 
     // ተራ መልእክት ከደንበኛ (Forwarding to Admins)
@@ -196,7 +241,7 @@ if (text === "/start") {
     res.sendStatus(200);
 });
 
-// 3. Webhook ለማገናኘት (ይህንን አንድ ጊዜ በብሮውዘር መክፈት አለብህ)
+// 3. Webhook ለማገናኘት
 app.get('/api/set-webhook', async (req, res) => {
     const webhookUrl = `${WEB_URL}/api/telegram-webhook`;
     const response = await axios.get(`https://api.telegram.org/bot${BOT_TOKEN}/setWebhook?url=${webhookUrl}`);
@@ -206,6 +251,19 @@ app.get('/api/set-webhook', async (req, res) => {
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
+
+// --- ⏰ ሰርቨሩ እንዳይተኛ በየ 5 ደቂቃው ራሱን የመቀስቀሻ ኮድ (Keep-Alive Setup) ---
+const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000;
+setInterval(async () => {
+    if (WEB_URL) {
+        try {
+            const response = await axios.get(`${WEB_URL}`);
+            console.log(`🤖 Keep-Alive Ping Sent! Status: ${response.status}`);
+        } catch (error) {
+            console.error("❌ Keep-Alive Ping Failed:", error.message);
+        }
+    }
+}, KEEP_ALIVE_INTERVAL);
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
