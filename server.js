@@ -112,25 +112,33 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // --- የ /start ኮማንድ ---
  // --- የ /start ኮማንድ ---
-    if (text === "/start") {
-        const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
-            `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
-            `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
-            `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
-            `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
-            `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON \n\n` +
-            `🛒 መጽሐፉን ለማግኘት ከታች ያለውን <b>'📚 መጽሐፍ'</b> የሚለውን በተን ይጫኑ።`;
+    // --- የ /start ኮማንድ ---
+if (text === "/start") {
+    const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
+        `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
+        `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
+        `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
+        `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
+        `• መጽሐፉን ለመግዛት እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን ትልቁን <b>Menu Button</b> ይጫኑ።\n\n` +
+        `────────────────────\n\n` +
+        `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
+        `This bot is the official place to get <b>"The Negadras"</b>, the first comprehensive Amharic trading psychology book compiled by Natnael Biruk.\n\n` +
+        `Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.\n\n` +
+        `⚠️ <b>HOW TO BUY:</b>\n` +
+        `• To order the book, please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
+        `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
+        `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON`;
 
-        await sendTelegram('sendMessage', {
-            chat_id: chatId,
-            text: welcomeText,
-            parse_mode: "HTML",
-            reply_markup: {
-                keyboard: [[{ text: "📚 መጽሐፍ", web_app: { url: WEB_URL } }]],
-                resize_keyboard: true
-            }
-        });
-    }
+    await sendTelegram('sendMessage', {
+        chat_id: chatId,
+        text: welcomeText,
+        parse_mode: "HTML",
+        // የድሮውን የኪይቦርድ በተን ሙሉ በሙሉ ለማጥፋት እና ለማጽዳት፡
+        reply_markup: {
+            remove_keyboard: true
+        }
+    });
+}
 
     // --- የአድሚን ኮማንዶች ---
     if (isAdmin) {
