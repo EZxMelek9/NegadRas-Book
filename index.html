@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ENQOPAZYON | Book Store</title>
+    <title>ነጋድራሱ The negadras ENQOPAZYON </title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -152,18 +152,33 @@
         tg.expand();
 
         function setLang(lang) {
-            currentLang = lang;
-            document.getElementById('lang-en').className = `px-3 py-1 rounded-full ${lang === 'en' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
-            document.getElementById('lang-am').className = `px-3 py-1 rounded-full ${lang === 'am' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
-            
-            const isAm = lang === 'am';
-            document.getElementById('input-name').placeholder = isAm ? "ሙሉ ስም" : "Full Name";
-            document.getElementById('input-phone').placeholder = isAm ? "ስልክ ቁጥር" : "Phone Number";
-            document.getElementById('input-email').placeholder = isAm ? "ኢሜል" : "Email";
-            document.getElementById('input-username').placeholder = isAm ? "የቴሌግራም ዩሰርኔም" : "Telegram Username";
-            document.getElementById('file-name').innerText = isAm ? "የክፍያ ማረጋገጫ ፎቶ ያያይዙ" : "Attach Proof Screenshot";
-            document.getElementById('submit-btn').innerText = isAm ? "ትዕዛዙን አረጋግጥ" : "Confirm Order";
-        }
+        currentLang = lang;
+        document.getElementById('lang-en').className = `px-3 py-1 rounded-full ${lang === 'en' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
+        document.getElementById('lang-am').className = `px-3 py-1 rounded-full ${lang === 'am' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
+    
+       const isAm = lang === 'am';
+    
+    // የፎርሙ ማስተካከያዎች
+       document.getElementById('input-name').placeholder = isAm ? "ሙሉ ስም" : "Full Name";
+       document.getElementById('input-phone').placeholder = isAm ? "ስልክ ቁጥር" : "Phone Number";
+       document.getElementById('input-email').placeholder = isAm ? "ኢሜል" : "Email";
+       document.getElementById('input-username').placeholder = isAm ? "የቴሌግራም ዩሰርኔም (@username)" : "Telegram Username (@username)";
+       document.getElementById('file-name').innerText = isAm ? "የክፍያ ማረጋገጫ ፎቶ ያያይዙ" : "Attach Proof Screenshot";
+       document.getElementById('submit-btn').innerText = isAm ? "ትዕዛዙን አረጋግጥ" : "Confirm Order";
+    
+    // አዳዲስ የተጨመሩ (የመጽሐፉ መግለጫዎች ቋንቋ መቀየሪያ)
+       document.getElementById('book-title').innerText = isAm ? "ነጋድራሱ" : "NegadRasu";
+       document.getElementById('book-author').innerText = isAm ? "በናትናኤል ብሩክ" : "By Natnael Biruk";
+    
+      const amDesc = `"ነጋድራሱ" በአዘጋጅ ናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ አማርኛ የትሬዲንግ ስነልቦና መጽሐፍ ነው። የቀደሙት የንግድ ጄኔራሎች እነ ነጋድራስ ገብረኪዳን በዕውቀትና በሥርዓት የንግድ መስመሩን እንደመሩት ሁሉ፣ ይህ መጽሐፍ የዛሬውን ወጣት ከስሜት ማዕበል ወደ አዕምሮ ሰላም በመውሰድ በፎሬክስ፣ ክሪፕቶ እና በህይወት ስኬት ላይ እውነተኛ መሪ ያደርገዋል።`;
+      const enDesc = `"NegadRasu" is the first comprehensive Amharic trading psychology book compiled by Natnael Biruk. Just as the historic trade leaders like Negadras Gebrekidan led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.`;
+    
+      document.querySelector('.book-description').innerText = isAm ? amDesc : enDesc;
+    
+      document.getElementById('warning-text').innerHTML = isAm ? 
+        `⚠️ ማሳሰቢያ፡ እባክዎን ትክክለኛ ስምዎን፣ ስልክ ቁጥርዎን እና ዩሰርኔምዎን ያስገቡ። የመጽሐፉ ፓስዎርድ የሚሰራው በእነዚህ መረጃዎች ላይ ተመስርቶ ስለሆነ ስህተት ካለ መጽሐፉን መክፈት አይችሉም።` : 
+        `⚠️ NOTICE: Please enter your real name, phone number, and username. The book's password is generated based on this info; any error means you won't be able to unlock the book.`;
+       }
 
         function copyToClipboard(text, el) {
             navigator.clipboard.writeText(text).then(() => {
@@ -253,8 +268,9 @@
                 });
 
                 if (response.ok) {
-                    showToast(currentLang === 'am' ? "✅ ትዕዛዝዎ በተሳካ ሁኔታ ተልኳል!" : "✅ Order sent successfully!");
-                    setTimeout(() => tg.close(), 6000);
+                showToast(currentLang === 'am' ? "✅ ትዕዛዝዎ ተልኳል! ቦቱን ይመልከቱ።" : "✅ Order sent! Check the bot.");
+                setTimeout(() => tg.close(), 2000);
+                       }
                 } else {
                     throw new Error("Failed to send order to server");
                 }
