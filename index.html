@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ENQOPAZYON | Book Store</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Noto+Sans+Ethiopic:wght@400;700;900&display=swap"
+        rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', 'Noto Sans Ethiopic', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .book1-mode { --accent: #0ea5e9; }
+
+        .transition-all {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+
+<body class="book1-mode transition-all">
+    <div id="glow"
+        class="fixed top-0 left-0 w-full h-[80%] blur-[120px] opacity-20 pointer-events-none transition-all bg-[#0ea5e9]">
+    </div>
+
+    <div class="min-h-screen w-full flex flex-col items-center p-4 relative z-10">
+
+        <header class="w-full max-w-sm flex flex-col gap-6 pt-6">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-black tracking-tighter text-[#156b34]">
+                    Negad<span class="text-[#FFB400]">Ras</span>
+                </h1>
+                <div class="flex bg-white/5 p-1 rounded-full border border-white/10 backdrop-blur-md text-[10px] font-bold">
+                    <button onclick="setLang('en')" id="lang-en" class="px-3 py-1 rounded-full bg-[#0ea5e9] text-black">EN</button>
+                    <button onclick="setLang('am')" id="lang-am" class="px-3 py-1 rounded-full text-slate-500">አማ</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="w-full max-w-sm mt-8 flex flex-col items-center text-center gap-4 bg-slate-900/40 p-6 rounded-[2rem] border border-white/5">
+            <img id="book-img" src="https://res.cloudinary.com/dlthi9a6h/image/upload/v1779704486/photo_2026-04-29_18-37-39_piyazt.jpg" alt="Book Cover" class="w-32 h-44 object-cover rounded-lg shadow-2xl border border-white/10">
+            <div>
+                <h2 id="book-title" class="text-xl font-bold text-white">ነጋድራሱ</h2>
+                <h5 id="book-author" class="text-lg font-semibold text-slate-400">በናትናኤል ብሩክ</h5>
+                <p id="book-desc" class="text-xs text-slate-400 mt-2 leading-relaxed">የነጋድራሱ ገብረሕይወት ባይከዳኝን የሕይወት ታሪክ፣ የኢኮኖሚና የፖለቲካ ፍልስፍና የሚተነትን ድንቅ መጽሐፍ።</p>
+            </div>
+            <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ዋጋ፡</span>
+                <span id="book-price" class="text-lg font-black text-[#2dd4bf]">600.00</span>
+                <span class="text-[10px] font-bold text-slate-500">ETB</span>
+            </div>
+            <div class="mt-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                <p id="warning-text" class="text-[9px] font-bold text-rose-400 leading-tight">
+                    ⚠️ ማሳሰቢያ፡ እባክዎን ትክክለኛ ስምዎን፣ ስልክ ቁጥርዎን እና ዩሰርኔምዎን ያስገቡ። የመጽሐፉ ፓስዎርድ የሚሰራው በእነዚህ መረጃዎች ላይ ተመስርቶ ስለሆነ ስህተት ካለ መጽሐፉን መክፈት አይችሉም።
+                </p>
+            </div>
+        </div>
+
+        <form onsubmit="handleSubmit(event)" class="w-full max-w-sm flex flex-col gap-4 mt-6 pb-24">
+            <div class="space-y-3">
+                <input type="text" id="input-name" placeholder="ሙሉ ስም" required
+                    class="w-full bg-slate-900/60 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-white/20">
+                <input type="tel" id="input-phone" placeholder="ስልክ ቁጥር" required
+                    class="w-full bg-slate-900/60 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-white/20">
+                <input type="email" id="input-email" placeholder="ኢሜል" required
+                    class="w-full bg-slate-900/60 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-white/20">
+                <input type="text" id="input-username" placeholder="የቴሌግራም ዩሰርኔም (@username)" required
+                    class="w-full bg-slate-900/60 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-white/20">
+            </div>
+
+            <div class="p-5 bg-teal-500/5 rounded-3xl border border-white/5 group active:scale-95 transition-all cursor-pointer" onclick="copyToClipboard('0968045352', this)">
+                <div class="flex justify-between items-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    በዚህ ቴሌብር ይላኩ፡Solomon
+                    <i data-lucide="copy" class="w-3 h-3 opacity-50"></i>
+                </div>
+                <div class="text-2xl font-black text-white tracking-widest font-mono">0968045352</div>
+            </div>
+
+            <label id="upload-box"
+                class="block p-8 border-2 border-dashed border-white/10 rounded-[2rem] text-center cursor-pointer hover:bg-white/5 transition-all">
+                <div id="upload-icon" class="mb-3 text-slate-500">
+                    <i data-lucide="upload" class="w-8 h-8 mx-auto"></i>
+                </div>
+                <div id="file-name" class="text-[11px] font-bold text-white uppercase tracking-widest">የክፍያ ማረጋገጫ ፎቶ ያያይዙ</div>
+                <input type="file" id="input-file" accept="image/*" onchange="handleFile(event)" class="hidden">
+            </label>
+
+            <button type="submit" id="submit-btn"
+                class="w-full py-5 rounded-2xl text-sm font-black uppercase tracking-widest bg-[#2dd4bf] text-black shadow-lg active:scale-95 transition-all">
+                ትዕዛዙን አረጋግጥ
+            </button>
+
+            <div class="text-center opacity-40 mt-8">
+                <div class="flex flex-col gap-1">
+                    <span class="text-[9px] font-bold uppercase tracking-widest">Powered by ETN ECOSYSTEM</span>
+                    <span class="text-[9px] font-bold uppercase">© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div id="toast"
+        class="fixed bottom-8 left-8 right-8 p-5 rounded-2xl text-center text-xs font-bold z-[100] shadow-2xl border bg-teal-500/90 text-black backdrop-blur-xl hidden">
+    </div>
+
+    <script>
+        const books = {
+            1: {
+                title: "ነጋድራሱ",
+                author: "ናትናኤል ብሩክ",
+                desc: "የነጋድራሱ ገብረሕይወት ባይከዳኝን የሕይወት ታሪክ፣ የኢኮኖሚና የፖለቲካ ፍልስፍና የሚተነትን ድንቅ መጽሐፍ።", 
+                price: "600.00", 
+                color: "#0ea5e9", 
+                img: "https://res.cloudinary.com/dlthi9a6h/image/upload/v1779704486/photo_2026-04-29_18-37-39_piyazt.jpg" 
+            }
+        };
+
+        let currentMode = 1;
+        let currentLang = 'en';
+        let base64Image = null;
+
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        function setLang(lang) {
+            currentLang = lang;
+            document.getElementById('lang-en').className = `px-3 py-1 rounded-full ${lang === 'en' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
+            document.getElementById('lang-am').className = `px-3 py-1 rounded-full ${lang === 'am' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
+            
+            const isAm = lang === 'am';
+            document.getElementById('input-name').placeholder = isAm ? "ሙሉ ስም" : "Full Name";
+            document.getElementById('input-phone').placeholder = isAm ? "ስልክ ቁጥር" : "Phone Number";
+            document.getElementById('input-email').placeholder = isAm ? "ኢሜል" : "Email";
+            document.getElementById('input-username').placeholder = isAm ? "የቴሌግራም ዩሰርኔም" : "Telegram Username";
+            document.getElementById('file-name').innerText = isAm ? "የክፍያ ማረጋገጫ ፎቶ ያያይዙ" : "Attach Proof Screenshot";
+            document.getElementById('submit-btn').innerText = isAm ? "ትዕዛዙን አረጋግጥ" : "Confirm Order";
+        }
+
+        function copyToClipboard(text, el) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(currentLang === 'am' ? "ተገልብጧል!" : "Copied!");
+                el.style.borderColor = books[currentMode].color;
+                setTimeout(() => el.style.borderColor = '', 1000);
+            });
+        }
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (file.size > 5 * 1024 * 1024) {
+                showToast(currentLang === 'am' ? "❌ ፎቶው 5MB በላይ ነው።" : "❌ Image exceeds 5MB", true);
+                return;
+            }
+            document.getElementById('file-name').innerText = currentLang === 'am' ? "ምስሉን በማዘጋጀት ላይ..." : "Processing image...";
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                base64Image = event.target.result;
+                document.getElementById('file-name').innerText = file.name.substring(0, 20) + "...";
+                document.getElementById('upload-icon').style.color = books[currentMode].color;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showToast(msg, error = false) {
+            const toast = document.getElementById('toast');
+            toast.innerText = msg;
+            toast.className = `fixed bottom-8 left-8 right-8 p-5 rounded-2xl text-center text-xs font-bold z-[100] shadow-2xl border backdrop-blur-xl ${error ? 'bg-rose-500 text-white' : 'bg-teal-500 text-black'}`;
+            toast.style.display = 'block';
+            setTimeout(() => toast.style.display = 'none', 4000);
+        }
+
+        async function handleSubmit(e) {
+            e.preventDefault();
+            const btn = document.getElementById('submit-btn');
+            if (!base64Image) return showToast(currentLang === 'am' ? "እባክዎ መጀመሪያ ደረሰኝ ያያይዙ" : "Please attach receipt first", true);
+
+            const name = document.getElementById('input-name').value;
+            const phone = document.getElementById('input-phone').value;
+            const email = document.getElementById('input-email').value;
+            let username = document.getElementById('input-username').value;
+
+            if (!username.startsWith('@')) {
+                username = '@' + username;
+            }
+
+            btn.disabled = true;
+            btn.innerText = currentLang === 'am' ? "📤 ምስሉን በማስገባት ላይ..." : "📤 Uploading...";
+
+            try {
+                // Cloudinary Upload
+                const uploadData = new FormData();
+                uploadData.append('file', base64Image);
+                uploadData.append('upload_preset', 'book_preset'); // ‹-- ማሳሰቢያ፡ ይህ በCloudinaryህ ላይ መኖሩን አረጋግጥ!
+
+                const uploadResponse = await fetch('https://api.cloudinary.com/v1_1/dlthi9a6h/image/upload', {
+                    method: 'POST',
+                    body: uploadData
+                });
+
+                if (!uploadResponse.ok) throw new Error("Cloudinary upload failed");
+                const uploadResult = await uploadResponse.json();
+                const imageUrl = uploadResult.secure_url;
+
+                btn.innerText = currentLang === 'am' ? "✅ ትዕዛዙን በማስኬድ ላይ..." : "✅ Processing...";
+
+                const orderData = {
+                    user_id: tg.initDataUnsafe?.user?.id || "N/A",
+                    book_id: currentMode,
+                    book_title: books[currentMode].title,
+                    name: name,
+                    phone: phone,
+                    email: email,
+                    telegram_username: username,
+                    price: books[currentMode].price,
+                    receipt_url: imageUrl
+                };
+
+                // Send to our Render Backend
+                const response = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(orderData)
+                });
+
+                if (response.ok) {
+                    showToast(currentLang === 'am' ? "✅ ትዕዛዝዎ በተሳካ ሁኔታ ተልኳል!" : "✅ Order sent successfully!");
+                    setTimeout(() => tg.close(), 3000);
+                } else {
+                    throw new Error("Failed to send order to server");
+                }
+
+            } catch (error) {
+                console.error(error);
+                showToast("❌ " + error.message, true);
+                btn.disabled = false;
+                btn.innerText = currentLang === 'am' ? "ትዕዛዙን አረጋግጥ" : "Confirm Order";
+            }
+        }
+
+        window.onload = () => {
+            tg.expand();
+            setLang('en');
+            lucide.createIcons();
+        };
+    </script>
+</body>
+
+</html>
