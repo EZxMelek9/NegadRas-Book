@@ -263,12 +263,17 @@
                     body: JSON.stringify(orderData)
                 });
 
-                if (response.ok) {
+               if (response.ok) {
                     showToast(currentLang === 'am' ? "✅ ትዕዛዝዎ ተልኳል! ቦቱን ይመልከቱ።" : "✅ Order sent! Check the bot.");
-                    setTimeout(() => tg.close(), 2000);
+                    // ዌቡ ከመዘጋቱ በፊት ለ 2.5 ሰከንድ ቶስቱን እንዲያሳይ እና ደንበኛው እንዲያነበው ጊዜ መስጠት
+                    setTimeout(() => {
+                        tg.close();
+                    }, 2500);
                 } else {
                     throw new Error("Failed to send order to server");
                 }
+
+            } catch (error) {
 
             } catch (error) {
                 console.error(error);
