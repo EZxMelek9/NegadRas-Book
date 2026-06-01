@@ -180,7 +180,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             `3️⃣ <b>Ultimate Combo (Book + 30 Videos Bundle) <i>(Special Discount!)</i>\n\n` +
             `⚠️ <b>HOW TO BUY:</b>\n` +
             `• Please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
-            ` <b>© 2026/b>\n` +
+            ` <b>© 2026 </b>\n` +
             `ነጋድራሱ ሜሌክ ENQOPAZYON`;
 
         await sendTelegram('sendMessage', {
