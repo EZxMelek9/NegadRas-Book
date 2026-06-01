@@ -113,7 +113,7 @@ app.post('/api/order', async (req, res) => {
 
         if (data.user_id && data.user_id !== "N/A") {
             const customerSuccessMsg = `✅ <b>ትዕዛዝዎ በተሳካ ሁኔታ ወደ አድሚኑ ተልኳል!</b>\n\n` +
-                `እባክዎን አድሚኑ የክፍያ ደረሰኝዎን አረጋግጦ በዚሁ ቦት በኩል መጽሐፉን (PDF) ወይም የቪዲዮ ስልጠና ሊንኮችን እስከሚልክልዎ ድረስ በትዕግስት ይጠብቁ።\n\n` +
+                `እባክዎን አድሚኑ የክፍያ ደረሰኝዎን አረጋግጦ በዚሁ ቦት በኩል መጽሐፉን (PDF) ወይም የቪዲዮ ስልጠና ሊንኮችን እስከሚልክልዎ ድረስ በትዕግስት ይጠብቁ。\n\n` +
                 `ስላዘዙ እናመሰግናለን! 🙏\n\n` +
                 `ነጋድራሱ `;
                 
@@ -170,14 +170,14 @@ app.post('/api/telegram-webhook', async (req, res) => {
             `3️⃣ <b>ሁለቱንም በአንድ ላይ (መጽሐፍ + 30 ቪዲዮዎች)</b>\n` +
             `────────────────────\n\n` +
             `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
-            `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን<b>Menu Button</b> ይጫኑ።\n\n` +
+            `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን <b>Menu Button</b> ይጫኑ。\n\n` +
             `────────────────────\n\n` +
             `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
             `This bot is the official place to get <b>"The Negadras"</b> Trading Psychology E-Book & Premium Video Bundles by Natnael Biruk.\n\n` +
             `🔥 <b>Our Packages:</b>\n\n` +
-            `1️⃣ <b>"The Negadras" Book (PDF) \n` +
-            `2️⃣ <b>30 Advanced Training Videos Bundle\n` +
-            `3️⃣ <b>Ultimate Combo (Book + 30 Videos Bundle) <i>(Special Discount!)</i>\n\n` +
+            `1️⃣ <b>"The Negadras" Book (PDF)</b>\n` +
+            `2️⃣ <b>30 Advanced Training Videos Bundle</b>\n` +
+            `3️⃣ <b>Ultimate Combo (Book + 30 Videos Bundle)</b> <i>(Special Discount!)</i>\n\n` +
             `⚠️ <b>HOW TO BUY:</b>\n` +
             `• Please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
             ` <b>© 2026 </b>\n` +
