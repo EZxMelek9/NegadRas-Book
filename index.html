@@ -51,29 +51,42 @@
                     Negad<span class="text-[#FFB400]">Ras</span>
                 </h1>
                 <div class="flex bg-white/5 p-1 rounded-full border border-white/10 backdrop-blur-md text-[10px] font-bold">
-                    <button onclick="setLang('en')" id="lang-en" class="px-3 py-1 rounded-full bg-[#0ea5e9] text-black">EN</button>
+                    <button onclick="setLang('en')" id="lang-en" class="px-3 py-1 rounded-full bg-[#2dd4bf] text-black">EN</button>
                     <button onclick="setLang('am')" id="lang-am" class="px-3 py-1 rounded-full text-slate-500">አማ</button>
                 </div>
             </div>
         </header>
 
-        <div class="w-full max-w-sm mt-8 flex flex-col items-center text-center gap-4 bg-slate-900/40 p-6 rounded-[2rem] border border-white/5">
-            <img id="book-img" src="https://res.cloudinary.com/dlthi9a6h/image/upload/v1779704486/photo_2026-04-29_18-37-39_piyazt.jpg" alt="Book Cover" class="w-32 h-44 object-cover rounded-lg shadow-2xl border border-white/10">
+        <div class="w-full max-w-sm mt-6 grid grid-cols-3 gap-2 bg-slate-900/60 p-1.5 rounded-2xl border border-white/5">
+            <button onclick="updatePackage(1)" id="tab-1" class="py-3 text-xs font-bold rounded-xl transition-all bg-[#2dd4bf] text-black">Book</button>
+            <button onclick="updatePackage(2)" id="tab-2" class="py-3 text-xs font-bold rounded-xl transition-all text-slate-400 hover:text-white">Video</button>
+            <button onclick="updatePackage(3)" id="tab-3" class="py-3 text-xs font-bold rounded-xl transition-all text-slate-400 hover:text-white">Both</button>
+        </div>
+
+        <div class="w-full max-w-sm mt-4 flex flex-col items-center text-center gap-4 bg-slate-900/40 p-6 rounded-[2rem] border border-white/5">
+            
+            <div id="image-container" class="flex justify-center items-center gap-4 w-full h-44">
+                <img id="book-img" src="https://res.cloudinary.com/dlthi9a6h/image/upload/v1780275499/gbou0ytluerz7qozak6o.jpg" alt="Book Cover" class="w-32 h-44 object-cover rounded-lg shadow-2xl border border-white/10">
+                <div id="video-emoji-box" class="w-32 h-44 flex flex-col justify-center items-center bg-gradient-to-br from-slate-800 to-slate-950 rounded-lg border border-white/10 shadow-2xl hidden">
+                    <span class="text-5xl mb-2">🎬</span>
+                    <span class="text-[10px] font-bold tracking-widest text-[#2dd4bf] uppercase">VIDEO BUNDLE</span>
+                </div>
+            </div>
+            
             <div>
-                <h2 id="book-title" class="text-xl font-bold text-white">NegadRasu</h2>
+                <h2 id="book-title" class="text-xl font-bold text-white">The Negadras Book (PDF) Only</h2>
                 <h5 id="book-author" class="text-lg font-semibold text-slate-400">By Natnael Biruk</h5>
                 <p id="book-desc" class="text-sm text-slate-300 mt-2 px-2">
                     "NegadRasu" is the first comprehensive Amharic trading psychology book compiled by Natnael Biruk. Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.
                 </p>
-                <p class="ecosystem-tag" style="text-align: center; color: #00ffcc; font-size: 14px; font-weight: bold; margin-top: 10px;">
-                    ⚡ Powered by ETN ECOSYSTEM
-                </p>
             </div>
+            
             <div class="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
-                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">ዋጋ፡</span>
-                <span id="book-price" class="text-lg font-black text-[#2dd4bf]">750.00</span>
+                <span id="price-label" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">PRICE:</span>
+                <span id="book-price" class="text-lg font-black text-[#2dd4bf]">799.00</span>
                 <span class="text-[10px] font-bold text-slate-500">ETB</span>
             </div>
+            
             <div class="mt-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
                 <p id="warning-text" class="text-[9px] font-bold text-rose-400 leading-tight">
                     ⚠️ NOTICE: Please enter your real name, phone number, and username. The book's password is generated based on this info; any error means you won't be able to unlock the book.
@@ -93,12 +106,12 @@
                     class="w-full bg-slate-900/60 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-white/20">
             </div>
 
-            <div class="p-5 bg-teal-500/5 rounded-3xl border border-white/5 group active:scale-95 transition-all cursor-pointer" onclick="copyToClipboard('0968045352', this)">
-                <div class="flex justify-between items-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                    በዚህ ቴሌብር ይላኩ፡Solomon
+            <div class="p-5 bg-teal-500/5 rounded-3xl border border-white/5 group active:scale-95 transition-all cursor-pointer" onclick="copyToClipboard('0941550511', this)">
+                <div id="payment-label" class="flex justify-between items-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Send via Telebirr: Nathnael
                     <i data-lucide="copy" class="w-3 h-3 opacity-50"></i>
                 </div>
-                <div class="text-2xl font-black text-white tracking-widest font-mono">0968045352</div>
+                <div class="text-2xl font-black text-white tracking-widest font-mono">0941550511</div>
             </div>
 
             <label id="upload-box"
@@ -115,10 +128,10 @@
                 Confirm Order
             </button>
 
-            <div class="text-center opacity-40 mt-8">
+            <div class="text-center opacity-50 mt-8">
                 <div class="flex flex-col gap-1">
-                    <span class="text-[9px] font-bold uppercase tracking-widest">Powered by ETN ECOSYSTEM</span>
-                    <span class="text-[9px] font-bold uppercase">© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON</span>
+                    <span class="text-[10px] font-bold tracking-wide text-slate-400">Built by : ነጋድራሱ ሜሌክ ENQOPAZYON</span>
+                    <span class="text-[10px] font-black text-[#2dd4bf] mt-0.5">@2026</span>
                 </div>
             </div>
         </form>
@@ -128,16 +141,33 @@
     </div>
 
     <script>
-        const books = {
+        // 🛍️ ሙሉ በሙሉ የትሬዲንግ ስነ-ልቦና ላይ ብቻ ያተኮሩ መግለጫዎች
+ const packages = {
             1: {
-                title: "ነጋድራሱ",
-                author: "ናትናኤል ብሩክ",
-                price: "600.00", 
-                color: "#0ea5e9", 
-                img: "https://res.cloudinary.com/dlthi9a6h/image/upload/v1779704486/photo_2026-04-29_18-37-39_piyazt.jpg" 
+                key: "Book",
+                title_en: "The Negadras Book (PDF) Only",
+                title_am: "«ነጋድራሱ» መጽሐፍ (PDF) ብቻ",
+                desc_en: `"NegadRasu" is the first comprehensive Amharic trading psychology book compiled by Natnael Biruk. Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.`,
+                desc_am: `«ነጋድራሱ» በአዘጋጅ ናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ አማርኛ የትሬዲንግ ስነልቦና መጽሐፍ ነው። የቀደሙት የንግድ ጄኔራሎች ነጋድራሶች በዕውቀትና በሥርዓት የንግድ መስመሩን እንደመሩት ሁሉ፣ ይህ መጽሐፍ የዛሬውን ወጣት ከስሜት ማዕበል ወደ አዕምሮ ሰላም በመውሰድ በፎሬክስ, ክሪፕቶ እና በህይወት ስኬት ላይ እውነተኛ መሪ ያደርገዋል።`,
+                price: "799.00"
+            },
+            2: {
+                key: "Video",
+                title_en: "30 Videos Psychology Bundle",
+                title_am: "30 ምርጥ የቪዲዮዎች ጥቅል",
+                desc_en: `Presented by Natnael Biruk, this is the ultimate video masterclass focusing entirely on complete Trading Psychology. Over 30 premium, step-by-step videos designed to master your mindset, conquer emotional traps, and build the rock-solid discipline needed for trading success.`,
+                desc_am: `በናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ እና ዝርዝር የቪዲዮ ስልጠና ጥቅል! ይህ ጥቅል 30 ቪዲዮዎችን የያዘ ሲሆን፣ ሙሉ በሙሉ በትሬዲንግ ስነ-ልቦና (Trading Psychology) ላይ ያተኮረ ነው። ስሜታዊነትን፣ ስግብግብነትንና ፍርሃትን በማሸነፍ ጠንካራ እና የማይናወጥ የአዕምሮ ስነ-ልቦና እንዲገነቡ የሚረዳዎት የ ቪድዮ ጥቅል።`,
+                price: "coming soon"
+            },
+            3: {
+                key: "Both",
+                title_en: "Both (Book + 30 Videos Bundle)",
+                title_am: "ሁለቱንም በአንድ ላይ (መጽሐፍ + 30 ቪዲዮዎች)",
+                desc_en: `The Ultimate Trading Psychology Arsenal! Get the complete "Negadras" Psychology E-Book combined with the 30 Videos Premium Masterclass. This powerful duo by Natnael Biruk delivers the ultimate theoretical and practical knowledge focused entirely on building flawless trader psychology and mental discipline.`,
+                desc_am: `የተሟላው የትሬዲንግ ስነ-ልቦና ድል መሣሪያ! የ«ነጋድራሱ» መጽሐፍን ጥልቅ ዕውቀት እና 30 ቪዲዮዎችን በአንድ ላይ አጣምረው በታላቅ ቅናሽ ያግኙ። ናትናኤል ብሩክ ያዘጋጀው ይህ ጥምረት ሙሉ በሙሉ በትሬዲንግ ስነ-ልቦና እና በአዕምሮ ጥንካሬ ላይ ያተኮረ ለፎሬክስ፣ ክሪፕቶ እና ለህይወት ስኬት የተዘጋጀ መመሪያ።`,
+                price: "coming soon"
             }
         };
-
         let currentMode = 1;
         let currentLang = 'en';
         let base64Image = null;
@@ -146,6 +176,38 @@
         tg.ready();
         tg.expand();
 
+        function updatePackage(val) {
+            currentMode = parseInt(val);
+            document.getElementById('book-price').innerText = packages[currentMode].price;
+            
+            const isAm = currentLang === 'am';
+            document.getElementById('book-title').innerText = isAm ? packages[currentMode].title_am : packages[currentMode].title_en;
+            document.getElementById('book-desc').innerText = isAm ? packages[currentMode].desc_am : packages[currentMode].desc_en;
+
+            const bookImg = document.getElementById('book-img');
+            const videoBox = document.getElementById('video-emoji-box');
+
+            if (currentMode === 1) {
+                bookImg.classList.remove('hidden');
+                videoBox.classList.add('hidden');
+            } else if (currentMode === 2) {
+                bookImg.classList.add('hidden');
+                videoBox.classList.remove('hidden');
+            } else if (currentMode === 3) {
+                bookImg.classList.remove('hidden');
+                videoBox.classList.remove('hidden');
+            }
+
+            for (let i = 1; i <= 3; i++) {
+                const tab = document.getElementById(`tab-${i}`);
+                if (i === currentMode) {
+                    tab.className = "py-3 text-xs font-bold rounded-xl transition-all bg-[#2dd4bf] text-black";
+                } else {
+                    tab.className = "py-3 text-xs font-bold rounded-xl transition-all text-slate-400 hover:text-white";
+                }
+            }
+        }
+
         function setLang(lang) {
             currentLang = lang;
             document.getElementById('lang-en').className = `px-3 py-1 rounded-full ${lang === 'en' ? 'bg-[#2dd4bf] text-black' : 'text-slate-500'}`;
@@ -153,25 +215,19 @@
             
             const isAm = lang === 'am';
             
-            // የፎርሙ ማስተካከያዎች
             document.getElementById('input-name').placeholder = isAm ? "ሙሉ ስም" : "Full Name";
             document.getElementById('input-phone').placeholder = isAm ? "ስልክ ቁጥር" : "Phone Number";
             document.getElementById('input-email').placeholder = isAm ? "ኢሜል" : "Email";
             document.getElementById('input-username').placeholder = isAm ? "የቴሌግራም ዩሰርኔም (@username)" : "Telegram Username (@username)";
             document.getElementById('file-name').innerText = isAm ? "የክፍያ ማረጋገጫ ፎቶ ያያይዙ" : "Attach Proof Screenshot";
             document.getElementById('submit-btn').innerText = isAm ? "ትዕዛዙን አረጋግጥ" : "Confirm Order";
+            document.getElementById('price-label').innerText = isAm ? "ዋጋ፦" : "PRICE:";
+            document.getElementById('payment-label').innerHTML = isAm ? `በዚህ ቴሌብር ይላኩ፦ Nathnael <i data-lucide="copy" class="w-3 h-3 opacity-50"></i>` : `Send via Telebirr: Nathnael <i data-lucide="copy" class="w-3 h-3 opacity-50"></i>`;
             
-            // የመጽሐፉ ርዕስ እና አቅራቢ
-            document.getElementById('book-title').innerText = isAm ? "ነጋድራሱ" : "The Negadras";
+            document.getElementById('book-title').innerText = isAm ? packages[currentMode].title_am : packages[currentMode].title_en;
+            document.getElementById('book-desc').innerText = isAm ? packages[currentMode].desc_am : packages[currentMode].desc_en;
             document.getElementById('book-author').innerText = isAm ? "በናትናኤል ብሩክ" : "By Natnael Biruk";
             
-            // የአማርኛ እና የእንግሊዝኛ መግለጫዎች
-            const amDesc = `"ነጋድራሱ" በአዘጋጅ ናትናኤል ብሩክ የቀረበ የመጀመሪያው የተሟላ አማርኛ የትሬዲንግ ስነልቦና መጽሐፍ ነው። የቀደሙት የንግድ ጄኔራሎች ነጋድራሶች በዕውቀትና በሥርዓት የንግድ መስመሩን እንደመሩት ሁሉ፣ ይህ መጽሐፍ የዛሬውን ወጣት ከስሜት ማዕበል ወደ አዕምሮ ሰላም በመውሰድ በፎሬክስ፣ ክሪፕቶ እና በህይወት ስኬት ላይ እውነተኛ መሪ ያደርገዋል።`;
-            const enDesc = `"NegadRasu" is the first comprehensive Amharic trading psychology book compiled by Natnael Biruk. Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.`;
-            
-            document.getElementById('book-desc').innerText = isAm ? amDesc : enDesc;
-            
-            // የማሳሰቢያ ጽሑፍ ማስተካከያ
             document.getElementById('warning-text').innerHTML = isAm ? 
                 `⚠️ ማሳሰቢያ፡ እባክዎን ትክክለኛ ስምዎን፣ ስልክ ቁጥርዎን እና ዩሰርኔምዎን ያስገቡ። የመጽሐፉ ፓስዎርድ የሚሰራው በእነዚህ መረጃዎች ላይ ተመስርቶ ስለሆነ ስህተት ካለ መጽሐፉን መክፈት አይችሉም።` : 
                 `⚠️ NOTICE: Please enter your real name, phone number, and username. The book's password is generated based on this info; any error means you won't be able to unlock the book.`;
@@ -180,7 +236,7 @@
         function copyToClipboard(text, el) {
             navigator.clipboard.writeText(text).then(() => {
                 showToast(currentLang === 'am' ? "ተገልብጧል!" : "Copied!");
-                el.style.borderColor = books[currentMode].color;
+                el.style.borderColor = '#0ea5e9';
                 setTimeout(() => el.style.borderColor = '', 1000);
             });
         }
@@ -197,7 +253,7 @@
             reader.onload = (event) => {
                 base64Image = event.target.result;
                 document.getElementById('file-name').innerText = file.name.substring(0, 20) + "...";
-                document.getElementById('upload-icon').style.color = books[currentMode].color;
+                document.getElementById('upload-icon').style.color = '#0ea5e9';
             };
             reader.readAsDataURL(file);
         }
@@ -228,7 +284,6 @@
             btn.innerText = currentLang === 'am' ? "📤 ምስሉን በማስገባት ላይ..." : "📤 Uploading...";
 
             try {
-                // Cloudinary Upload
                 const uploadData = new FormData();
                 uploadData.append('file', base64Image);
                 uploadData.append('upload_preset', 'book_preset');
@@ -244,21 +299,20 @@
 
                 btn.innerText = currentLang === 'am' ? "✅ ትዕዛዙን በማስኬድ ላይ..." : "✅ Processing...";
 
-                // ደህንነቱ የተጠበቀ የቴሌግራም መረጃ አሰባሰብ (ID N/A እንዳይል)
                 const orderData = {
                     user_id: tg.initDataUnsafe?.user?.id || "N/A",
-                    init_data: tg.initData || "", // ሙሉውን የቴሌግራም ዳታ ለፓስወርድና ለቬሪፊኬሽን አሳልፎ ለመስጠት
+                    init_data: tg.initData || "", 
                     book_id: currentMode,
-                    book_title: books[currentMode].title,
+                    package_type: packages[currentMode].key, 
+                    book_title: currentLang === 'am' ? packages[currentMode].title_am : packages[currentMode].title_en,
                     name: name,
                     phone: phone,
                     email: email,
                     telegram_username: username,
-                    price: books[currentMode].price,
+                    price: packages[currentMode].price,
                     receipt_url: imageUrl
                 };
 
-                // Send to Render Backend
                 const response = await fetch('https://negadras-book.onrender.com/api/order', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
