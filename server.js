@@ -14,7 +14,6 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 // ⚠️ Environment Variables
-// የድሮውም የአዲሱም ቦት ቶክን እዚህ ይያዛል (በሪንደር ላይ NEW_BOT_TOKEN እና OLD_BOT_TOKEN ብለህ ማስገባት ትችላለህ)
 const NEW_BOT_TOKEN = process.env.NEW_BOT_TOKEN || process.env.BOT_TOKEN; 
 const OLD_BOT_TOKEN = process.env.OLD_BOT_TOKEN; 
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : [];
@@ -41,13 +40,12 @@ function saveUsers(users) {
 
 // 🔐 በሙሉ ስም (የአባት ስም ጨምሮ) እና በስልክ ቁጥር ፓስወርድ የመፍጠሪያ ፈንክሽን
 function generatePassword(name, phone) {
-    // በስሞቹ መካከል ያለውን ስፔስ (Space) በሙሉ ወደ ታች ሰረዝ (_) ይቀይራል
     let cleanName = name.trim().replace(/\s+/g, '_');
     let cleanPhone = phone.trim();
     return `${cleanName}@${cleanPhone}`; 
 }
 
-// ቴሌግราม መልእክት መላኪያ ፈንክሽን (አሁን በ useOldBot አማካኝነት የትኛው ቦት እንደሚልክ መምረጥ ይችላል)
+// ቴሌግрам መልእክት መላኪያ ፈንክሽን
 async function sendTelegram(method, data, useOldBot = false) {
     try {
         const token = (useOldBot && OLD_BOT_TOKEN) ? OLD_BOT_TOKEN : NEW_BOT_TOKEN;
@@ -62,11 +60,25 @@ async function getPasswordFromSheet(targetUserId) {
     if (!GOOGLE_SHEET_URL) return null;
     try {
         const response = await axios.get(GOOGLE_SHEET_URL);
-        // የጉግል ሺትህ የጌት (GET) ምላሽ ላይ "orders" የሚል አሬይ (Array) መኖር አለበት
-        if (response.data && Array.isArray(response.data.orders)) {
-            const userOrder = response.data.orders.reverse().find(o => o.user_id.toString() === targetUserId.toString());
-            if (userOrder && userOrder.customer_password) {
-                return userOrder.customer_password; // ከሺቱ የተገኘው ትክክለኛው ቋሚ ፓስወርድ
+        
+        let ordersArray = [];
+        if (response.data) {
+            if (Array.isArray(response.data.orders)) {
+                ordersArray = response.data.orders;
+            } else if (Array.isArray(response.data)) {
+                ordersArray = response.data;
+            }
+        }
+
+        if (ordersArray.length > 0) {
+            // .slice().reverse() ኦሪጅናሉን ዳታ ሳይቀይር የቅርብ ጊዜውን ትዕዛዝ ቀድሞ ለመፈለግ ይረዳል
+            const userOrder = ordersArray.slice().reverse().find(o => 
+                (o.user_id && o.user_id.toString() === targetUserId.toString()) || 
+                (o.userId && o.userId.toString() === targetUserId.toString())
+            );
+            
+            if (userOrder) {
+                return userOrder.customer_password || userOrder.customerPassword || null;
             }
         }
         return null;
@@ -84,11 +96,11 @@ app.post('/api/order', async (req, res) => {
         // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር
         const customerPassword = generatePassword(data.name, data.phone);
         
-        // 🔥 መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን እና አዲሱን package_type አብረን እንጨምራለን
+        // 🔥 መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን እንጨምራለን
         const sheetData = { 
             ...data, 
-            action: "new_order", // ለጉግል ሺት መለያ
-            package_type: data.package_type, // 🔥 አዲሱ የጥቅል አይነት (Book, Video, Both)
+            action: "new_order", 
+            package_type: data.package_type, 
             customer_password: customerPassword 
         };
 
@@ -106,19 +118,19 @@ app.post('/api/order', async (req, res) => {
             users[data.user_id].generated_password = customerPassword;
             users[data.user_id].phone = data.phone;
             users[data.user_id].name = data.name; 
-            users[data.user_id].purchased_package = data.package_type; // 🔥 የገዛው ጥቅል በፋይል ውስጥም ይቀመጣል
+            users[data.user_id].purchased_package = data.package_type; 
             saveUsers(users);
         }
 
-        // 🚨 አድሚኑ ጋር ሲደርስ የትኛውን ጥቅል እንደገዛ በግልጽ በቀይ ክበብ እንዲለይ ተደርጓል
+        // 🚨 አድሚኑ ጋር የሚደርስ መግለጫ
         const adminMsg = `🚨 <b>አዲስ የሽያጭ ትዕዛዝ መጥቷል!</b>\n\n` +
-            `🔥 <b>የተገዛው ጥቅል (Package):</b> 🔴 <b>[ ${data.package_type.toUpperCase()} ]</b> 🔴\n` +
-            `🛍️ <b>ዝርዝር መግለጫ:</b> ${data.book_title}\n` +
-            `👤 <b>በዳሽቦርድ የሞላው ስም:</b> ${data.name}\n` +
-            `📞 <b>ስልክ:</b> <code>${data.phone}</code>\n` +
-            `📧 <b>ኢሜል:</b> ${data.email}\n` +
-            `✈️ <b>Telegram:</b> ${data.telegram_username}\n` +
-            `💰 <b>ዋጋ:</b> ${data.price} ETB\n\n` +
+            `🔥 <b>የተገዛው ጥቅል (Package):</b> 🔴 <b>[ ${data.package_type ? data.package_type.toUpperCase() : "N/A"} ]</b> 🔴\n` +
+            `🛍️ <b>ዝርዝር መግለጫ:</b> ${data.book_title || "N/A"}\n` +
+            `👤 <b>በዳሽቦርድ የሞላው ስም:</b> ${data.name || "N/A"}\n` +
+            `📞 <b>ስልክ:</b> <code>${data.phone || "N/A"}</code>\n` +
+            `📧 <b>ኢሜል:</b> ${data.email || "N/A"}\n` +
+            `✈️ <b>Telegram:</b> ${data.telegram_username || "N/A"}\n` +
+            `💰 <b>ዋጋ:</b> ${data.price || "0"} ETB\n\n` +
             `🆔 <b>የደንበኛ ID:</b> <code>${data.user_id || "N/A"}</code>\n` +
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
             `🔐 <b>ለዚህ ደንበኛ በቋሚነት የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
@@ -133,7 +145,7 @@ app.post('/api/order', async (req, res) => {
                 photo: data.receipt_url,
                 caption: adminMsg,
                 parse_mode: "HTML"
-            }, false); // ለአድሚን በአዲሱ ቦት ይላካል
+            }, false); 
         }
 
         if (data.user_id && data.user_id !== "N/A") {
@@ -146,7 +158,7 @@ app.post('/api/order', async (req, res) => {
                 chat_id: data.user_id,
                 text: customerSuccessMsg,
                 parse_mode: "HTML"
-            }, false); // ለደንበኛ በአዲሱ ቦት ይላካል
+            }, false); 
         }
 
         res.status(200).json({ success: true });
@@ -178,7 +190,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
         };
         saveUsers(users);
 
-        // አዲስ ሰው ቦቱን ሲጀምር መረጃው ወደ ጉግል ሺት Users ታብ ይላካል
         if (GOOGLE_SHEET_URL) {
             const userDataToSheet = {
                 action: "bot_start",
@@ -196,7 +207,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // --- የ /start ኮማንድ ---
     if (text === "/start") {
-        // 🔄 ቪዲዮዎችን እና አጠቃላይ ጥቅሎችን በግልጽ እንዲያሳይ ተደርጎ የተቀየረው አዲሱ የዌልካም መልዕክት
         const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
             `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
             `ይህ ቦት በናትናኤል ብሩክ የተዘጋጀውን የትሬዲንግ ስነ-ልቦና መቆጣጠሪያ <b>"ነጋድራሱ"</b> መጽሐፍ እና የቪዲዮ ስልጠናዎችን በይፋ የሚያገኙበት ቦታ ነው።\n\n` +
@@ -239,7 +249,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 let userListMsg = `👥 <b>የቦቱ ተጠቃሚዎች ዝርዝር (${userKeys.length})</b>\n\n`;
                 userKeys.forEach((uid, index) => {
                     const uName = users[uid].name || "ስም የሌለው";
-                    const uPackage = users[uid].purchased_package ? ` [🛍️ ${users[uid].purchased_package}]` : ""; // 🔥 አድሚኑ የትኛውን ጥቅል እንደገዙ ማየት ይችላል
+                    const uPackage = users[uid].purchased_package ? ` [🛍️ ${users[uid].purchased_package}]` : ""; 
                     const uUser = users[uid].username !== "N/A" ? `@${users[uid].username}` : "ዩዘርኔም የሌለው";
                     userListMsg += `${index + 1}. 👤 <b>${uName}</b>${uPackage} - ${uUser}\n🆔 <code>${uid}</code>\n────────────────────\n`;
                 });
@@ -247,7 +257,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             }
         }
 
-        // 📢 ብሮድካስት (በሁለቱም ቦቶች ለሁሉም ሰው በአንድ ጊዜ ማስታወቂያ ይልካል)
+        // 📢 ብሮድካስት
         else if (text.startsWith("/broadcast ")) {
             const broadcastMsg = text.replace("/broadcast ", "");
             if (GOOGLE_SHEET_URL) {
@@ -257,7 +267,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     let count = 0;
                     for (const uid of idsToBroadcast) {
                         if(uid && uid !== "N/A") {
-                            // በአዲሱም በድሮውም ቦት ይልካል (በሁለቱም ቦታ ላሉት እንዲደርስ)
                             await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" }, false);
                             if (OLD_BOT_TOKEN) {
                                 await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" }, true);
@@ -273,8 +282,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
         }
 
         // 💬 ምላሽ መስጠት
-        // በአዲስ ቦት ለመመለስ፦ /reply [ID] [መልእክት]
-        // በድሮ ቦት ለመመለስ፦ /reply [ID] old [መልእክት]
         else if (text.startsWith("/reply ")) {
             const parts = text.split(" ");
             const targetId = parts[1];
@@ -307,7 +314,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
         }
 
-        // 📥 ፋይል መላክ (Document + /sendfile [ID] ወይም /sendfile [ID] old)
+        // 📥 ፋይል መላክ
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const parts = msg.caption.split(" ");
             const targetId = parts[1];
@@ -326,17 +333,17 @@ app.post('/api/telegram-webhook', async (req, res) => {
             
             let finalPassword = null;
             
-            // 🔍 ደረጃ 1፦ መጀመሪያ በሰርቨሩ ማህደር (users.json) ውስጥ ካለ ይፈልጋል
+            // 🔍 ደረጃ 1፦ ከሎካል ፋይል መፈለግ
             if (users[targetId] && users[targetId].generated_password) {
                 finalPassword = users[targetId].generated_password;
             }
             
-            // 🔍 ደረጃ 2፦ ሪንደር ሪስታርት ሆኖ ፋይሉ ከጠፋ፣ በቀጥታ ከ Google Sheet ላይ እውነተኛውን ቋሚ ፓስወርድ ፈልጎ ያመጣል!
+            // 🔍 ደረጃ 2፦ ከ Google Sheet መፈለግ (የተስተካከለው ክፍል)
             if (!finalPassword) {
                 finalPassword = await getPasswordFromSheet(targetId);
             }
             
-            // 🔍 ደረጃ 3፦ ከላይ በሁለቱም ጨርሶ ካልተገኘ ብቻ ከ ID ቁጥሩ ይመነጫል (ደህንነቱ አስተማማኝ እንዲሆን)
+            // 🔍 ደረጃ 3፦ ከጠፋ የመጨረሻ አማራጭ ከ ID ቁጥር ማመንጨት
             if (!finalPassword) {
                 const lastFourId = targetId.substring(targetId.length - 4);
                 finalPassword = `CUSTOMER@${lastFourId}`; 
@@ -362,7 +369,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             });
         }
     } 
-    // ተራ መልእክት ከደንበኛ (Forwarding to Admins)
+    // ተራ መልእክት ከደንበኛ
     else if (!text.startsWith("/")) {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
@@ -388,7 +395,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// --- ⏰ ሰርቨሩ እንዳይተኛ በየ 5 ደቂቃው ራሱን የመቀስቀሻ ኮድ (Keep-Alive Setup) ---
+// --- Keep-Alive Setup ---
 const KEEP_ALIVE_INTERVAL = 5 * 60 * 1000;
 setInterval(async () => {
     if (WEB_URL) {
