@@ -62,8 +62,12 @@ app.post('/api/order', async (req, res) => {
         // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር
         const customerPassword = generatePassword(data.name, data.phone);
         
-        // መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን አብረን እንጨምራለን
-        const sheetData = { ...data, customer_password: customerPassword };
+        // 🔥 መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን እና አዲሱን package_type አብረን እንጨምራለን
+        const sheetData = { 
+            ...data, 
+            package_type: data.package_type, // 🔥 አዲሱ የጥቅል አይነት (Book, Video, Both)
+            customer_password: customerPassword 
+        };
 
         // --- 📥 መረጃውን ወደ Google Sheet የመላክ አሠራር ---
         if (GOOGLE_SHEET_URL) {
@@ -79,11 +83,14 @@ app.post('/api/order', async (req, res) => {
             users[data.user_id].generated_password = customerPassword;
             users[data.user_id].phone = data.phone;
             users[data.user_id].name = data.name; 
+            users[data.user_id].purchased_package = data.package_type; // 🔥 የገዛው ጥቅል በፋይል ውስጥም ይቀመጣል
             saveUsers(users);
         }
 
-        const adminMsg = `📚 <b>አዲስ የመጽሐፍ ትዕዛዝ</b>\n\n` +
-            `📖 <b>መጽሐፍ:</b> ${data.book_title}\n` +
+        // 🚨 አድሚኑ ጋር ሲደርስ የትኛውን ጥቅል እንደገዛ በግልጽ በቀይ ክበብ እንዲለይ ተደርጓል
+        const adminMsg = `🚨 <b>አዲስ የሽያጭ ትዕዛዝ መጥቷል!</b>\n\n` +
+            `🔥 <b>የተገዛው ጥቅል (Package):</b> 🔴 <b>[ ${data.package_type.toUpperCase()} ]</b> 🔴\n` +
+            `🛍️ <b>ዝርዝር መግለጫ:</b> ${data.book_title}\n` +
             `👤 <b>በዳሽቦርድ የሞላው ስም:</b> ${data.name}\n` +
             `📞 <b>ስልክ:</b> <code>${data.phone}</code>\n` +
             `📧 <b>ኢሜል:</b> ${data.email}\n` +
@@ -92,7 +99,7 @@ app.post('/api/order', async (req, res) => {
             `🆔 <b>የደንበኛ ID:</b> <code>${data.user_id || "N/A"}</code>\n` +
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
             `🔐 <b>ለዚህ ደንበኛ በቋሚነት የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
-            `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${data.user_id} [መልእክት]</code>\n` +
+            `💬 <b>ምላሽ ለመስጠት:</b> <code>/reply ${data.user_id} ይቅርታ የላኩት ትክክል አይደለም አስተካክለው ከ እንደገና ይሞክሩ ጥያቄ ካልዎት እዚው ቦት ላይ መጻፍ ይችላሉ</code>\n` +
             `📥 <b>ፋይል ለመላክ:</b> ፒዲኤፉን ስትልክ Caption ላይ: <code>/sendfile ${data.user_id}</code>`;
 
         for (const adminId of ADMIN_IDS) {
@@ -106,8 +113,9 @@ app.post('/api/order', async (req, res) => {
 
         if (data.user_id && data.user_id !== "N/A") {
             const customerSuccessMsg = `✅ <b>ትዕዛዝዎ በተሳካ ሁኔታ ወደ አድሚኑ ተልኳል!</b>\n\n` +
-                `እባክዎን አድሚኑ የክፍያ ደረሰኝዎን አረጋግጦ በዚሁ ቦት በኩል መጽሐፉን (PDF) እስከሚልክልዎ ድረስ በትዕግስት ይጠብቁ。\n\n` +
-                `ስላዘዙ እናመሰግናለን! 🙏`;
+                `እባክዎን አድሚኑ የክፍያ ደረሰኝዎን አረጋግጦ በዚሁ ቦት በኩል መጽሐፉን (PDF) ወይም የቪዲዮ ስልጠና ሊንኮችን እስከሚልክልዎ ድረስ በትዕግስት ይጠብቁ።\n\n` +
+                `ስላዘዙ እናመሰግናለን! 🙏\n\n` +
+                `ነጋድራሱ `;
                 
             await sendTelegram('sendMessage', {
                 chat_id: data.user_id,
@@ -152,21 +160,28 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // --- የ /start ኮማንድ ---
     if (text === "/start") {
+        // 🔄 ቪዲዮዎችን እና አጠቃላይ ጥቅሎችን በግልጽ እንዲያሳይ ተደርጎ የተቀየረው አዲሱ የዌልካም መልዕክት
         const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
             `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
-            `ይህ ቦት የዘመናዊው ኢትዮጵያዊ ነጋዴ የስነ-ልቦና ቁልፍ የሆነውንና በናትናኤል ብሩክ የተዘጋጀውን <b>"ነጋድራሱ"</b> መጽሐፍ በይፋ በ pdf የምታገኙበት ቦታ ነው።\n\n` +
-            `የቀደሙት የሀገራችን የንግድ መሪዎች <b>ነጋድራሶች</b> በዕውቀትና በሥርዓት ሀገርን እንደመሩት ሁሉ፣ ይህ መጽሐፍ እርስዎም በፋይናንስና በትሬዲንግ ዓለም ውስጥ ስሜትን አሸንፈው አዕምሮዎን በመግዛት ስኬታማ ነጋዴ እንዲሆኑ ይመራዎታል።\n\n` +
+            `ይህ ቦት በናትናኤል ብሩክ የተዘጋጀውን የትሬዲንግ ስነ-ልቦና መቆጣጠሪያ <b>"ነጋድራሱ"</b> መጽሐፍ እና የቪዲዮ ስልጠናዎችን በይፋ የሚያገኙበት ቦታ ነው።\n\n` +
+            `🔥 <b>የእኛ የሽያጭ አማራጮች (Packages)፦</b>\n\n` +
+            `1️⃣ <b>"ነጋድራሱ" መጽሐፍ (PDF) ብቻ</b>\n` +
+            `2️⃣ <b>30 ምርጥ የቪዲዮዎች ጥቅል (Videos Bundle)</b>\n` +
+            `3️⃣ <b>ሁለቱንም በአንድ ላይ (መጽሐፍ + 30 ቪዲዮዎች)</b>\n` +
+            `────────────────────\n\n` +
             `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
-            `• መጽሐፉን ለመግዛት እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን ትልቁን <b>Menu Button</b> ይጫኑ。\n\n` +
+            `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን<b>Menu Button</b> ይጫኑ።\n\n` +
             `────────────────────\n\n` +
             `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
-            `<i>"The Adwa of today is an economic Adwa."</i>\n\n` +
-            `This bot is the official place to get <b>"The Negadras"</b>, the first comprehensive Amharic trading psychology book compiled by Natnael Biruk.\n\n` +
-            `Just as the historic trade generals led commerce with wisdom and discipline, this book guides today's youth from emotional chaos to mental clarity, making them true leaders in Forex, Crypto, and life success.\n\n` +
+            `This bot is the official place to get <b>"The Negadras"</b> Trading Psychology E-Book & Premium Video Bundles by Natnael Biruk.\n\n` +
+            `🔥 <b>Our Packages:</b>\n\n` +
+            `1️⃣ <b>"The Negadras" Book (PDF) \n` +
+            `2️⃣ <b>30 Advanced Training Videos Bundle\n` +
+            `3️⃣ <b>Ultimate Combo (Book + 30 Videos Bundle) <i>(Special Discount!)</i>\n\n` +
             `⚠️ <b>HOW TO BUY:</b>\n` +
-            `• To order the book, please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
-            `✨ <b>Powered by ETN ECOSYSTEM</b>\n` +
-            `© 2026 ነጋድራሱ ሜሌክ ENQOPAZYON`;
+            `• Please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
+            ` <b>© 2026/b>\n` +
+            `ነጋድራሱ ሜሌክ ENQOPAZYON`;
 
         await sendTelegram('sendMessage', {
             chat_id: chatId,
@@ -183,13 +198,14 @@ app.post('/api/telegram-webhook', async (req, res) => {
         if (text === "/users") {
             const userKeys = Object.keys(users);
             if (userKeys.length === 0) {
-                await sendTelegram('sendMessage', { chat_id: chatId, text: "👥 እስካሁን የተመዘገበ ተጠቃሚ የለም።" });
+                await sendTelegram('sendMessage', { chat_id: chatId, text: "👥 እስካሁን የተመዘገበ ተጠቃሚ የለም。" });
             } else {
                 let userListMsg = `👥 <b>የቦቱ ተጠቃሚዎች ዝርዝር (${userKeys.length})</b>\n\n`;
                 userKeys.forEach((uid, index) => {
                     const uName = users[uid].name || "ስም የሌለው";
+                    const uPackage = users[uid].purchased_package ? ` [🛍️ ${users[uid].purchased_package}]` : ""; // 🔥 አድሚኑ የትኛውን ጥቅል እንደገዙ ማየት ይችላል
                     const uUser = users[uid].username !== "N/A" ? `@${users[uid].username}` : "ዩዘርኔም የሌለው";
-                    userListMsg += `${index + 1}. 👤 <b>${uName}</b> - ${uUser}\n🆔 <code>${uid}</code>\n────────────────────\n`;
+                    userListMsg += `${index + 1}. 👤 <b>${uName}</b>${uPackage} - ${uUser}\n🆔 <code>${uid}</code>\n────────────────────\n`;
                 });
                 await sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
             }
@@ -200,7 +216,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const broadcastMsg = text.replace("/broadcast ", "");
             let count = 0;
             for (const uid in users) {
-                await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}`, parse_mode: "HTML" });
+                await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" });
                 count++;
             }
             await sendTelegram('sendMessage', { chat_id: chatId, text: `✅ መልእክቱ ለ ${count} ተጠቃሚዎች ተልኳል።` });
@@ -214,7 +230,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
             
             let telegramName = "ተጠቃሚ";
             
-            // 💡 ሰርቨሩ ቢታደስ እንኳ የቴሌግራም ፈርስት ኔምን ቀጥታ ከቴሌግራም API ላይ በደህንነት መፈለጊያ ዘዴ
             try {
                 const chatInfo = await sendTelegram('getChat', { chat_id: targetId });
                 if (chatInfo && chatInfo.data && chatInfo.data.result) {
@@ -224,7 +239,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
             }
 
-            await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}`, parse_mode: "HTML" });
+            await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}\n\nBuilt by : ነጋድራሱ ሜሌክ ENQOPAZYON`, parse_mode: "HTML" });
             
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
@@ -244,7 +259,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const targetId = msg.caption.split(" ")[1];
             let telegramName = "ተጠቃሚ";
             
-            // 💡 ሰርቨሩ ቢታደስ እንኳ የቴሌግራም ፈርስት ኔምን ቀጥታ ከቴሌግራም API ላይ መፈለጊያ ዘዴ
             try {
                 const chatInfo = await sendTelegram('getChat', { chat_id: targetId });
                 if (chatInfo && chatInfo.data && chatInfo.data.result) {
@@ -256,7 +270,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
             
             const savedUserData = users[targetId];
             
-            // 🔑 መደናገር እንዳይፈጠር፦ በፋይል ውስጥ ፓስወርዱ ካልተገኘ (ሰርቨሩ ስለታደሰ)፣ ለአድሚኑ ቀድሞ ከመጣው መልዕክት ወይም ከጉግል ሺት ላይ አይተህ በደንበኛው ሙሉ ስምና ስልክ የቆለፍከውን ፓስወርድ እንድታውቅ፣ ቦቱ እዚህ ጋር የ ID መጨረሻውን ተጠቅሞ መከላከያ ፓስወርድ ይፈጥራል (ደንበኛው እንዳይዘጋ)
             let finalPassword;
             if (savedUserData && savedUserData.generated_password) {
                 finalPassword = savedUserData.generated_password;
@@ -266,9 +279,10 @@ app.post('/api/telegram-webhook', async (req, res) => {
             }
 
             const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
-                `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF) ተያይዟል።\n\n` +
+                `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF)።\n\n` +
                 `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${finalPassword}</code>\n\n` +
-                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግ ያስቀጣል።`;
+                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግ ያስቀጣል።\n\n` +
+                `ነጋድራሱ`;
                 
             await sendTelegram('sendDocument', {
                 chat_id: targetId,
@@ -293,7 +307,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 parse_mode: "HTML"
             });
         }
-        await sendTelegram('sendMessage', { chat_id: chatId, text: "መልእክትዎ ደርሷል! እናመሰግናለን።" });
+        await sendTelegram('sendMessage', { chat_id: chatId, text: "መልእክትዎ ደርሷል! እናመሰግናለን。" });
     }
 
     res.sendStatus(200);
