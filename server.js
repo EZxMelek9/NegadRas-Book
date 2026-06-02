@@ -419,7 +419,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             if (!targetId || isNaN(targetId)) {
                 await sendTelegram('sendMessage', { 
                     chat_id: chatId, 
-                    text: "❌ <b>ስህተት!</b> እባክህ የተጠቃሚውን ID በትክክል አስገባ。\nምሳሌ፦ <code>/referral 123456789</code>",
+                    text: "❌ <b>ስህተት!</b> እባክህ ነጋድራሱ የተጠቃሚውን ID በትክክል አስገባ。\nምሳሌ፦ <code>/referral 123456789</code>",
                     parse_mode: "HTML"
                 });
                 return res.sendStatus(200);
