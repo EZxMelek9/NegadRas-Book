@@ -16,10 +16,9 @@ app.use(express.static(__dirname));
 // ⚠️ Environment Variables
 const NEW_BOT_TOKEN = process.env.NEW_BOT_TOKEN || process.env.BOT_TOKEN; 
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : [];
-const WEB_URL = process.env.WEB_URL; // Render URL
+const WEB_URL = process.env.WEB_URL; 
 const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
 
-// ዳታቤዝ ፋይል (ቀላል JSON ፋይል ተጠቃሚዎችን ለመመዝገብ)
 const DB_FILE = path.join(__dirname, 'users.json');
 
 // ተጠቃሚዎችን ከፋይል ማንበብ
@@ -53,15 +52,52 @@ async function sendTelegram(method, data) {
     }
 }
 
+// 🔄 አገልገሎቱ ሲጀምር ከGoogle Sheet መረጃዎችን አውርዶ JSON ፋይሉን የማደሻ ፈንክሽን (Render ጥበቃ)
+async function syncFromGoogleSheets() {
+    if (!GOOGLE_SHEET_URL) return;
+    try {
+        console.log("🔄 Syncing database from Google Sheets to protect against Render restarts...");
+        const response = await axios.post(GOOGLE_SHEET_URL, { action: "get_all_users" });
+        if (response.data && response.data.success && response.data.users) {
+            const googleUsers = response.data.users;
+            const localUsers = loadUsers();
+            
+            // የጎግል ሺቱን ዳታ ወደ የአካባቢው JSON ፋይል ማዋሃድ
+            Object.keys(googleUsers).forEach(uid => {
+                if (!localUsers[uid]) localUsers[uid] = {};
+                localUsers[uid].points = googleUsers[uid].points || 0;
+                localUsers[uid].name = googleUsers[uid].name || localUsers[uid].name;
+                localUsers[uid].username = googleUsers[uid].username || localUsers[uid].username;
+                if (googleUsers[uid].invited_by) localUsers[uid].invited_by = googleUsers[uid].invited_by;
+            });
+            
+            saveUsers(localUsers);
+            console.log("✅ Database sync complete! Users secured.");
+        }
+    } catch (err) {
+        console.error("❌ Sync from Google Sheets failed:", err.message);
+    }
+}
+
+// የደንበኛ ሪፈራል መረጃዎችን ወደ Google Sheet መላኪያ
+function syncUserToGoogle(userId, userData) {
+    if (!GOOGLE_SHEET_URL) return;
+    axios.post(GOOGLE_SHEET_URL, {
+        action: "sync_user",
+        user_id: userId,
+        name: userData.name,
+        username: userData.username,
+        points: userData.points || 0,
+        invited_by: userData.invited_by || ""
+    }).catch(e => console.error("❌ Sync user to Google Error:", e.message));
+}
+
 // 1. ከዳሽንቦርዱ ትዕዛዝ ሲመጣ
 app.post('/api/order', async (req, res) => {
     try {
         const data = req.body;
-        
-        // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር
         const customerPassword = generatePassword(data.name, data.phone);
         
-        // 🔥 መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን እንጨምራለን
         const sheetData = { 
             ...data, 
             action: "new_order", 
@@ -69,14 +105,12 @@ app.post('/api/order', async (req, res) => {
             customer_password: customerPassword 
         };
 
-        // --- 📥 መረጃውን ወደ Google Sheet የመላክ አሠራር ---
         if (GOOGLE_SHEET_URL) {
             axios.post(GOOGLE_SHEET_URL, sheetData)
                 .then(() => console.log("✅ Data successfully synced with Google Sheets!"))
                 .catch(err => console.error("❌ Google Sheets Sync Error:", err.message));
         }
 
-        // በፋይል ውስጥ የደንበኛውን መረጃ አስቀምጦ መያዝ
         const users = loadUsers();
         if (data.user_id) {
             if (!users[data.user_id]) users[data.user_id] = {};
@@ -87,7 +121,6 @@ app.post('/api/order', async (req, res) => {
             saveUsers(users);
         }
 
-        // 🚨 አድሚኑ ጋር የሚደርስ መግለጫ
         const adminMsg = `🚨 <b>አዲስ የሽያጭ ትዕዛዝ መጥቷል!</b>\n\n` +
             `🔥 <b>የተገዛው ጥቅል (Package):</b> 🔴 <b>[ ${data.package_type ? data.package_type.toUpperCase() : "N/A"} ]</b> 🔴\n` +
             `🛍️ <b>ዝርዝር መግለጫ:</b> ${data.book_title || "N/A"}\n` +
@@ -147,32 +180,122 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     const users = loadUsers();
     
-    // ተጠቃሚን መመዝገብ ወይም ማደስ
+    // ቋሚ የኪቦርድ በተኖች መዋቅር
+    const mainKeyboard = {
+        reply_markup: {
+            keyboard: [
+                [{ text: "👥 የእኔ ሪፈራል ሊንክ" }, { text: "💰 የእኔ ባላንስ" }],
+                [{ text: "📥 ብር ማውጫ (Withdraw)" }]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: false
+        }
+    };
+
+    // --- ደረጃ በደረጃ የደንበኛውን የቴሌብር መልስ መቀበያ ሎጂክ ---
+    if (users[userId] && users[userId].withdraw_step) {
+        const step = users[userId].withdraw_step;
+
+        // የቴሌብር ስልክ ቁጥር ሲያስገቡ
+        if (step === "awaiting_telebirr_phone") {
+            users[userId].temp_telebirr = text.trim();
+            users[userId].withdraw_step = "awaiting_payout_name";
+            saveUsers(users);
+
+            await sendTelegram('sendMessage', { 
+                chat_id: chatId, 
+                text: `👤 <b>ደረጃ 2/2፦ ሙሉ ስም</b>\n\nበጣም ጥሩ። አሁን ደግሞ በቴሌብር አካውንቱ ላይ ያለውን የእርስዎን ሙሉ ስም ያስገቡ፦`, 
+                parse_mode: "HTML" 
+            });
+            return res.sendStatus(200);
+        } 
+        // ሙሉ ስም ሲያስገቡ (የመጨረሻ ደረጃ)
+        else if (step === "awaiting_payout_name") {
+            const currentPoints = users[userId].points || 0;
+            const telebirrPhone = users[userId].temp_telebirr;
+            const fullName = text.trim();
+            
+            const fullDetails = `የክፍያ መንገድ: ቴሌብር (telebirr) , ስልክ: ${telebirrPhone} , ስም: ${fullName}`;
+
+            // 1. ለአድሚኑ (ለአንተ) በቴሌግራም መልእክት መላክ
+            for (const adminId of ADMIN_IDS) {
+                await sendTelegram('sendMessage', {
+                    chat_id: adminId,
+                    text: `💰 <b>አዲስ የቴሌብር ክፍያ ጥያቄ (Payout Request)!</b>\n\n` +
+                          `👤 <b>ከደንበኛ:</b> ${msg.from.first_name}\n` +
+                          `🆔 <b>ID:</b> <code>${userId}</code>\n` +
+                          `💵 <b>የሚወጣው መጠን:</b> <b>${currentPoints} ETB</b>\n` +
+                          `📱 <b>የቴሌብር ስልክ:</b> <code>${telebirrPhone}</code>\n` +
+                          `👤 <b>የአካውንቱ ስም:</b> ${fullName}\n\n` +
+                          `────────────────────\n` +
+                          `ብሩን በቴሌብር ከላክህ በኋላ ለደንበኛው ለማሳወቅ፦\n` +
+                          `<code>/reply ${userId} 👋 ሰላም የጠየቁት የ ${currentPoints} ብር የቴሌብር ክፍያ በቁጥርዎ (${telebirrPhone}) ተልኳል! እናመሰግናለን።</code>`,
+                    parse_mode: "HTML"
+                });
+            }
+
+            // 2. ወደ Google Sheets (Payouts ታብ) መላክ
+            if (GOOGLE_SHEET_URL) {
+                axios.post(GOOGLE_SHEET_URL, {
+                    action: "payout_request",
+                    user_id: userId,
+                    name: msg.from.first_name,
+                    amount: currentPoints,
+                    bank_details: fullDetails
+                }).catch(e => console.error(e.message));
+            }
+
+            // መረጃዎቹን በደህንነት ማጽዳት እና ባላንስን 0 ማድረግ
+            users[userId].points = 0;
+            delete users[userId].withdraw_step;
+            delete users[userId].temp_telebirr;
+            saveUsers(users);
+            syncUserToGoogle(userId, users[userId]);
+
+            // ለተጠቃሚው ማጠናቀቂያ መልእክት መላክ እና ዋናውን ኪቦርድ መመለስ
+            await sendTelegram('sendMessage', {
+                chat_id: chatId,
+                text: `✅ <b>የክፍያ ጥያቄዎ በተሳካ ሁኔታ ተመዝግቧል!</b>\n\nየቴሌብር መረጃዎ ለአድሚኑ ደርሷል። በዛሬው እለት ተጣርቶ በቴሌብር አካውንትዎ ይላክልዎታል። እናመሰግናለን!`,
+                parse_mode: "HTML",
+                ...mainKeyboard
+            });
+            return res.sendStatus(200);
+        }
+    }
+
+    // አዲስ ተጠቃሚ መመዝገብ ወይም ማደስ
     if (!users[userId]) {
         users[userId] = { 
             name: msg.from.first_name, 
             username: msg.from.username || "N/A", 
+            points: 0,
             joined_at: new Date().toLocaleString() 
         };
-        saveUsers(users);
 
-        if (GOOGLE_SHEET_URL) {
-            const userDataToSheet = {
-                action: "bot_start",
-                user_id: userId,
-                name: msg.from.first_name,
-                telegram_username: msg.from.username ? `@${msg.from.username}` : "N/A"
-            };
-            axios.post(GOOGLE_SHEET_URL, userDataToSheet).catch(e => console.error(e.message));
+        // የሪፈራል ሊንክ መፈተሻ ሎጂክ (/start ref_xxxx)
+        if (text.startsWith("/start ref_")) {
+            const inviterId = text.split("_")[1];
+            if (inviterId && inviterId !== userId && users[inviterId]) {
+                users[userId].invited_by = inviterId;
+                // ለጋባዡ ሰው ማሳወቂያ መላክ
+                await sendTelegram('sendMessage', {
+                    chat_id: inviterId,
+                    text: `🔔 <b>አዲስ ግብዣ!</b>\n\n${msg.from.first_name} በእርስዎ ሊንክ ቦቱን ጀምሯል። መጽሐፉን ሲገዛ <b>50 ፖይንት (50 ብር)</b> አካውንትዎ ላይ ይጨመራል!`,
+                    parse_mode: "HTML"
+                });
+            }
         }
+        saveUsers(users);
+        syncUserToGoogle(userId, users[userId]);
     } else {
         users[userId].name = msg.from.first_name;
         if (msg.from.username) users[userId].username = msg.from.username;
+        if (users[userId].points === undefined) users[userId].points = 0;
         saveUsers(users);
     }
 
     // --- የ /start ኮማንድ ---
-    if (text === "/start") {
+    if (text.startsWith("/start")) {
         const welcomeText = `📚 <b>እንኳን ወደ ነጋድራሱ በሰላም መጡ፣ ${msg.from.first_name}!</b> 👋🌟\n\n` +
             `<i>"የዛሬው አድዋ የኢኮኖሚ አድዋ ነው።"</i>\n\n` +
             `ይህ ቦት በናትናኤል ብሩክ የተዘጋጀውን የትሬዲንግ ስነ-ልቦና መቆጣጠሪያ <b>"ነጋድራሱ"</b> መጽሐፍ እና የቪዲዮ ስልጠናዎችን በይፋ የሚያገኙበት ቦታ ነው።\n\n` +
@@ -182,30 +305,78 @@ app.post('/api/telegram-webhook', async (req, res) => {
             `3️⃣ <b>ሁለቱንም በአንድ ላይ (መጽሐፍ + 30 ቪዲዮዎች)</b>\n` +
             `────────────────────\n\n` +
             `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
-            `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን <b>Menu Button</b> ይጫኑ。\n\n` +
-            `────────────────────\n\n` +
-            `📚 <b>Welcome to The Negadras Bot, ${msg.from.first_name}!</b> 👋🌟\n\n` +
-            `This bot is the official place to get <b>"The Negadras"</b> Trading Psychology E-Book & Premium Video Bundles by Natnael Biruk.\n\n` +
-            `🔥 <b>Our Packages:</b>\n\n` +
-            `1️⃣ <b>"The Negadras" Book (PDF)</b>\n` +
-            `2️⃣ <b>30 Advanced Training Videos Bundle</b>\n` +
-            `3️⃣ <b>Ultimate Combo (Book + 30 Videos Bundle)</b> <i>(Special Discount!)</i>\n\n` +
-            `⚠️ <b>HOW TO BUY:</b>\n` +
-            `• Please click the main <b>'📚 order'</b> (Menu Button) located at the bottom left of your screen.\n\n` +
-            ` <b>© 2026 </b>\n` +
-            `ነጋድራሱ ሜሌክ ENQOPAZYON`;
+            `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን <b>Menu Button</b> ይጫኑ。\n` +
+            `• ሰዎችን በመጋበዝ በሰው 50 ብር ለመስራት ከታች ያሉትን የሪፈራል በተኖች ይጠቀሙ!`;
 
         await sendTelegram('sendMessage', {
             chat_id: chatId,
             text: welcomeText,
             parse_mode: "HTML",
-            reply_markup: { remove_keyboard: true }
+            ...mainKeyboard
         });
     }
 
-    // --- የአድሚን ኮማንዶች ---
-    if (isAdmin) {
+    // --- 👥 ሪፈራል እና ባላንስ በተኖች አያያዝ ---
+    else if (text === "👥 የእኔ ሪፈራል ሊንክ") {
+        const botUsername = msg.via_bot ? msg.via_bot.username : 'የቦትህ_ዩዘርኔም';
+        const refLink = `https://t.me/${botUsername}?start=ref_${userId}`; 
         
+        const refText = `👥 <b>የእርስዎ መጋበዣ ሊንክ (Referral Link)</b>\n\n` +
+            `ይህንን ሊንክ ለጓደኞችዎ ወይም በየግሩፑ በማጋራት፣ በእርስዎ ሊንክ ገብተው መጽሐፉን በሚገዙት እያንዳንዱ ሰው <b>50 ብር (50 ፖይንት)</b> ያግኙ!💰\n\n` +
+            `🔗 <b>የእርስዎ ሊንክ፦</b>\n<code>${refLink}</code>`;
+            
+        await sendTelegram('sendMessage', { chat_id: chatId, text: refText, parse_mode: "HTML", ...mainKeyboard });
+    }
+
+    else if (text === "💰 የእኔ ባላንስ") {
+        const currentPoints = users[userId].points || 0;
+        const balanceText = `💰 <b>የአካውንትዎ ይዘት (Balance)</b>\n\n` +
+            `👤 <b>ስም:</b> ${msg.from.first_name}\n` +
+            `💵 <b>ያለዎት ጠቅላላ ፖይንት:</b> <code>${currentPoints} ፖይንት (${currentPoints} ብር)</code>\n\n` +
+            `<i>*ማሳሰቢያ: ክፍያ ለመጠየቅ ቢያንስ 50 ፖይንት ሊኖርዎት ይገባል።*</i>`;
+            
+        await sendTelegram('sendMessage', { chat_id: chatId, text: balanceText, parse_mode: "HTML", ...mainKeyboard });
+    }
+
+    // --- 📥 ብር ማውጫ (Withdraw) በተን መጫን ---
+    else if (text === "📥 ብር ማውጫ (Withdraw)") {
+        const currentPoints = users[userId].points || 0;
+        
+        // 📅 የዛሬውን ቀን መፈተሽ (0 = እሁድ፣ 1 = ሰኞ ... 6 = ቅዳሜ)
+        const today = new Date().getDay(); 
+        
+        if (today !== 0) { // ⚠️ እሁድ ካልሆነ (ከእሁድ ውጪ ከሆነ)
+            await sendTelegram('sendMessage', { 
+                chat_id: chatId, 
+                text: `📅 <b>የክፍያ ቀን አይደለም!</b>\n\nየሪፈራል ክፍያ መጠየቅ የሚቻለው <b>እሁድ ቀን ብቻ</b> ነው። እባክዎን እሁድ ቀን ማለዳ ላይ መጥተው ይጠይቁ። ስላረዱን እናመሰግናለን! 🙏`, 
+                parse_mode: "HTML",
+                ...mainKeyboard 
+            });
+        } 
+        else if (currentPoints < 50) { // 💰 ባላንሱ ከ 50 በታች ከሆነ
+            await sendTelegram('sendMessage', { 
+                chat_id: chatId, 
+                text: `❌ <b>ይቅርታ፣ ማውጣት አይችሉም!</b>\n\nየያዙት መጠን <code>${currentPoints} ብር</code> ነው። ክፍያ ለመጠየቅ ቢያንስ <b>50 ብር</b> ሊኖርዎት ይገባል። ሰዎችን በመጋበዝ ማሳደግ ይችላሉ!`, 
+                parse_mode: "HTML",
+                ...mainKeyboard 
+            });
+        } 
+        else {
+            // ተጠቃሚው መረጃ ማስገባት እንዲጀምር ስቴት መቀየር
+            users[userId].withdraw_step = "awaiting_telebirr_phone";
+            saveUsers(users);
+            
+            await sendTelegram('sendMessage', { 
+                chat_id: chatId, 
+                text: `📱 <b>ደረጃ 1/2፦ የቴሌብር ስልክ ቁጥር</b>\n\nእባክዎን ብሩ እንዲላክበት የሚፈልጉትን የ <b>ቴሌብር (telebirr)</b> ስልክ ቁጥርዎን ብቻ ይጻፉልን፦`, 
+                parse_mode: "HTML",
+                reply_markup: { remove_keyboard: true } // ኪቦርዱን ለጊዜው መደበቅ
+            });
+        }
+    }
+
+    // --- የአድሚን ኮማንዶች ---
+    else if (isAdmin) {
         if (text === "/users") {
             const userKeys = Object.keys(users);
             if (userKeys.length === 0) {
@@ -216,7 +387,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     const uName = users[uid].name || "ስም የሌለው";
                     const uPackage = users[uid].purchased_package ? ` [🛍️ ${users[uid].purchased_package}]` : ""; 
                     const uUser = users[uid].username !== "N/A" ? `@${users[uid].username}` : "ዩዘርኔም የሌለው";
-                    userListMsg += `${index + 1}. 👤 <b>${uName}</b>${uPackage} - ${uUser}\n🆔 <code>${uid}</code>\n────────────────────\n`;
+                    userListMsg += `${index + 1}. 👤 <b>${uName}</b>${uPackage} - ${uUser}\n🆔 <code>${uid}</code>\n💵 ፖይንት: ${users[uid].points || 0}\n────────────────────\n`;
                 });
                 await sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
             }
@@ -266,7 +437,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
         }
 
-        // 📥 የፋይል መላኪያ
+        // 📥 የፋይል መላኪያ (እዚህ ጋር ነው የሪፈራል ፖይንት የሚታሰበው)
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const parts = msg.caption.trim().split(/\s+/);
             const targetId = parts[1];
@@ -286,8 +457,26 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
             } catch (e) {}
 
+            // 🔥 የሪፈራል ፖይንት ስሌት 🔥
+            if (users[targetId] && users[targetId].invited_by) {
+                const inviterId = users[targetId].invited_by;
+                if (users[inviterId]) {
+                    // 50 ፖይንት (ብር) ጨምር
+                    users[inviterId].points = (users[inviterId].points || 0) + 50;
+                    saveUsers(users);
+                    syncUserToGoogle(inviterId, users[inviterId]);
+
+                    // ለጋባዡ ሰው የደስታ ማሳወቂያ መላክ
+                    await sendTelegram('sendMessage', {
+                        chat_id: inviterId,
+                        text: `🎉 <b>እንኳን ደስ አለዎት!</b>\n\nእርስዎ የጋበዙት ደንበኛ (<b>${telegramName}</b>) መጽሐፉን ስለገዙ <b>50 ብር (50 ፖይንት)</b> አካውንትዎ ላይ ተጨምሯል!`,
+                        parse_mode: "HTML"
+                    });
+                }
+            }
+
             const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
-                `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF)።\n\n` +
+                `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF)。\n\n` +
                 `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${inputPassword}</code>\n\n` +
                 `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግም የሚያስቀጣ ይሆናል።\n\n` +
                 `ነጋድራሱ`;
@@ -301,7 +490,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
-                text: `✅ ፋይሉ እና ፓስወርዱ [ <code>${inputPassword}</code> ] ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
+                text: `✅ ፋይሉ ለደንበኛ <b>${telegramName}</b> ተልኳል። የሪፈራል ቼክም ተከናውኗል።`,
                 parse_mode: "HTML"
             });
         }
@@ -353,4 +542,6 @@ setInterval(async () => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+    // 🔄 ሰርቨሩ ሲነሳ ወዲያውኑ ከGoogle Sheet መረጃዎችን አውርዶ JSON ፋይሉን ያድሳል
+    setTimeout(syncFromGoogleSheets, 5000);
 });
