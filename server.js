@@ -15,7 +15,6 @@ app.use(express.static(__dirname));
 
 // ⚠️ Environment Variables
 const NEW_BOT_TOKEN = process.env.NEW_BOT_TOKEN || process.env.BOT_TOKEN; 
-const OLD_BOT_TOKEN = process.env.OLD_BOT_TOKEN; 
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : [];
 const WEB_URL = process.env.WEB_URL; // Render URL
 const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
@@ -38,7 +37,7 @@ function saveUsers(users) {
     fs.writeFileSync(DB_FILE, JSON.stringify(users, null, 2));
 }
 
-// 🔐 በሙሉ ስም (የአባት ስም ጨምሮ) እና በስልክ ቁጥር ፓስወርድ የመፍጠሪያ ፈንክሽን
+// 🔐 ፓስወርድ የመፍጠሪያ ፈንክሽን
 function generatePassword(name, phone) {
     let cleanName = name.trim().replace(/\s+/g, '_');
     let cleanPhone = phone.trim();
@@ -46,10 +45,9 @@ function generatePassword(name, phone) {
 }
 
 // ቴሌግрам መልእክት መላኪያ ፈንክሽን
-async function sendTelegram(method, data, useOldBot = false) {
+async function sendTelegram(method, data) {
     try {
-        const token = (useOldBot && OLD_BOT_TOKEN) ? OLD_BOT_TOKEN : NEW_BOT_TOKEN;
-        return await axios.post(`https://api.telegram.org/bot${token}/${method}`, data);
+        return await axios.post(`https://api.telegram.org/bot${NEW_BOT_TOKEN}/${method}`, data);
     } catch (error) {
         console.error(`Telegram API Error (${method}):`, error.response ? error.response.data : error.message);
     }
@@ -60,7 +58,7 @@ app.post('/api/order', async (req, res) => {
     try {
         const data = req.body;
         
-        // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር (ይህ አድሚኑ ጋር እንዲላክ ነው)
+        // 🔑 ፓስወርዱን እዚሁ ላይ መፍጠር
         const customerPassword = generatePassword(data.name, data.phone);
         
         // 🔥 መረጃውን ወደ ጎግል ሺት ከመላካችን በፊት ፓስወርዱን እንጨምራለን
@@ -89,7 +87,7 @@ app.post('/api/order', async (req, res) => {
             saveUsers(users);
         }
 
-        // 🚨 አድሚኑ ጋር የሚደርስ መግለጫ (እዚህ ጋር የተፈጠረው ፓስወርድ በግልጽ ይታያል)
+        // 🚨 አድሚኑ ጋር የሚደርስ መግለጫ
         const adminMsg = `🚨 <b>አዲስ የሽያጭ ትዕዛዝ መጥቷል!</b>\n\n` +
             `🔥 <b>የተገዛው ጥቅል (Package):</b> 🔴 <b>[ ${data.package_type ? data.package_type.toUpperCase() : "N/A"} ]</b> 🔴\n` +
             `🛍️ <b>ዝርዝር መግለጫ:</b> ${data.book_title || "N/A"}\n` +
@@ -102,10 +100,10 @@ app.post('/api/order', async (req, res) => {
             `📄 <b>የደረሰኝ ፎቶ:</b> <a href="${data.receipt_url}">እዚህ ይጫኑ</a>\n\n` +
             `🔐 <b>ለዚህ ደንበኛ የተፈጠረ ፓስወርድ:</b> <code>${customerPassword}</code>\n\n` +
             `────────────────────\n` +
-            `📥 <b>ፋይሉን ለመላክ (ከላይ ያለውን ፓስወርድ ኮፒ አድርገህ እዚህ አስገባው)፦</b>\n` +
-            `Caption ላይ: <code>/sendfile ${data.user_id} ${customerPassword}</code>\n` +
-            `ወይም በድሮው ቦት ለመላክ ከፈለግክ:\n` +
-            `Caption ላይ: <code>/sendfile ${data.user_id} ${customerPassword} old</code>`;
+            `📥 <b>ፋይሉን ለመላክ፦</b>\n` +
+            `Caption ላይ: <code>/sendfile ${data.user_id} ${customerPassword}</code>\n\n` +
+            `📥 <b>መለእክት ለመላክ (Hint: ለ${data.name || "ደንበኛ"})፦</b>\n` +
+            `<code>/reply ${data.user_id} 👋 ሰላም ${data.name || "ደንበኛ"}፦ </code>`;
 
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendPhoto', {
@@ -113,7 +111,7 @@ app.post('/api/order', async (req, res) => {
                 photo: data.receipt_url,
                 caption: adminMsg,
                 parse_mode: "HTML"
-            }, false); 
+            }); 
         }
 
         if (data.user_id && data.user_id !== "N/A") {
@@ -126,7 +124,7 @@ app.post('/api/order', async (req, res) => {
                 chat_id: data.user_id,
                 text: customerSuccessMsg,
                 parse_mode: "HTML"
-            }, false); 
+            }); 
         }
 
         res.status(200).json({ success: true });
@@ -202,7 +200,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             text: welcomeText,
             parse_mode: "HTML",
             reply_markup: { remove_keyboard: true }
-        }, false);
+        });
     }
 
     // --- የአድሚን ኮማንዶች ---
@@ -233,10 +231,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     let count = 0;
                     for (const uid of idsToBroadcast) {
                         if(uid && uid !== "N/A") {
-                            await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" }, false);
-                            if (OLD_BOT_TOKEN) {
-                                await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" }, true);
-                            }
+                            await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" });
                             count++;
                         }
                     }
@@ -250,25 +245,18 @@ app.post('/api/telegram-webhook', async (req, res) => {
         else if (text.startsWith("/reply ")) {
             const parts = text.split(" ");
             const targetId = parts[1];
-            const useOld = parts[2] === "old";
-            let replyText = useOld ? text.replace(`/reply ${targetId} old `, "") : text.replace(`/reply ${targetId} `, "");
+            let replyText = text.replace(`/reply ${targetId} `, "");
             
             let telegramName = "ተጠቃሚ";
-            
             try {
-                const chatInfo = await sendTelegram('getChat', { chat_id: targetId }, useOld);
-                if (chatInfo && chatInfo.data && chatInfo.data.result) {
-                    telegramName = chatInfo.data.result.first_name;
-                }
-            } catch (e) {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
-            }
+            } catch (e) {}
 
-            await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}\n\nBuilt by : ነጋድራሱ ሜሌክ ENQOPAZYON`, parse_mode: "HTML" }, useOld);
+            await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}\n\nነጋድራሱ`, parse_mode: "HTML" });
             
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
-                text: `✅ ምላሹ ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) በ${useOld ? 'ድሮው' : 'አዲሱ'} ቦት በኩል ተልኳል።`,
+                text: `✅ ምላሹ ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
                 parse_mode: "HTML" 
             });
         }
@@ -278,13 +266,11 @@ app.post('/api/telegram-webhook', async (req, res) => {
             await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
         }
 
-        // 📥 አዲሱ የፋይል መላኪያ (አንተ በምትጽፈው ፓስወርድ ብቻ የሚሰራው)
+        // 📥 የፋይል መላኪያ
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const parts = msg.caption.trim().split(/\s+/);
             const targetId = parts[1];
-            // ሁለተኛው ፓራሜትር አንተ የምታስገባው የደንበኛው እውነተኛ ፓስወርድ ነው
             const inputPassword = parts[2]; 
-            const useOld = parts[3] === "old";
             
             if (!targetId || !inputPassword) {
                 await sendTelegram('sendMessage', { 
@@ -297,18 +283,13 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
             let telegramName = "ተጠቃሚ";
             try {
-                const chatInfo = await sendTelegram('getChat', { chat_id: targetId }, useOld);
-                if (chatInfo && chatInfo.data && chatInfo.data.result) {
-                    telegramName = chatInfo.data.result.first_name;
-                }
-            } catch (e) {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
-            }
+            } catch (e) {}
 
             const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
                 `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF)።\n\n` +
                 `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${inputPassword}</code>\n\n` +
-                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግ ያስቀጣል።\n\n` +
+                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግም የሚያስቀጣ ይሆናል።\n\n` +
                 `ነጋድራሱ`;
                 
             await sendTelegram('sendDocument', {
@@ -316,11 +297,11 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 document: msg.document.file_id,
                 caption: warningMsg,
                 parse_mode: "HTML"
-            }, useOld);
+            });
             
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
-                text: `✅ ፋይሉ እና ፓስወርዱ [ <code>${inputPassword}</code> ] ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) በ<b>${useOld ? 'ድሮው' : 'አዲሱ'}</b> ቦት በኩል ተልኳል።`,
+                text: `✅ ፋይሉ እና ፓስወርዱ [ <code>${inputPassword}</code> ] ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
                 parse_mode: "HTML"
             });
         }
@@ -329,11 +310,18 @@ app.post('/api/telegram-webhook', async (req, res) => {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
                 chat_id: adminId,
-                text: `📬 <b>መልእክት ከደንበኛ:</b>\n\n👤 <b>የቴሌግራም ስም:</b> ${msg.from.first_name}\n🆔 ID: <code>${userId}</code>\n\n💬 መልእክት: ${text}`,
+                text: `📬 <b>አዲስ መልእክት ከደንበኛ!</b>\n\n` +
+                      `👤 <b>የቴሌግራም ስም:</b> ${msg.from.first_name}\n` +
+                      `✈️ <b>Username:</b> ${msg.from.username ? '@'+msg.from.username : "የለውም"}\n` +
+                      `🆔 <b>ID:</b> <code>${userId}</code>\n\n` +
+                      `💬 <b>መልእክት:</b> ${text}\n\n` +
+                      `────────────────────\n` +
+                      `📥 <b>ለ${msg.from.first_name} ምላሽ ለመስጠት፦</b>\n` +
+                      `<code>/reply ${userId} 👋 ሰላም ${msg.from.first_name}፦ </code>`,
                 parse_mode: "HTML"
-            }, false);
+            });
         }
-        await sendTelegram('sendMessage', { chat_id: chatId, text: "መልእክትዎ ደርሷል! እናመሰግናለን。" }, false);
+        await sendTelegram('sendMessage', { chat_id: chatId, text: "መልእክትዎ ደርሷል! እናመሰግናለን。" });
     }
 
     res.sendStatus(200);
