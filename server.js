@@ -413,6 +413,47 @@ app.post('/api/telegram-webhook', async (req, res) => {
             }
         }
 
+        else if (text.startsWith("/referral ")) {
+            const targetId = text.replace("/referral ", "").trim();
+            
+            if (!targetId || isNaN(targetId)) {
+                await sendTelegram('sendMessage', { 
+                    chat_id: chatId, 
+                    text: "❌ <b>ስህተት!</b> እባክህ የተጠቃሚውን ID በትክክል አስገባ。\nምሳሌ፦ <code>/referral 123456789</code>",
+                    parse_mode: "HTML"
+                });
+                return res.sendStatus(200);
+            }
+
+            if (users[targetId]) {
+                const uName = users[targetId].name || "ስም የሌለው";
+                const uUsername = users[targetId].username !== "N/A" ? `@${users[targetId].username}` : "ዩዘርኔም የለውም";
+                const uPoints = users[targetId].points || 0;
+                const inviterId = users[targetId].invited_by || "በቀጥታ ነው የገባው (ማንም አልጋበዘውም)";
+
+                let inviterDetails = inviterId;
+                if (users[inviterId]) {
+                    inviterDetails = `👤 <b>${users[inviterId].name}</b> (🆔 <code>${inviterId}</code>)`;
+                }
+
+                const infoMsg = `🔍 <b>የተጠቃሚው የሪፈራል መረጃ፦</b>\n\n` +
+                    `👤 <b>ስም፦</b> ${uName}\n` +
+                    `✈️ <b>Username፦</b> ${uUsername}\n` +
+                    `🆔 <b>User ID፦</b> <code>${targetId}</code>\n` +
+                    `💰 <b>ያለው ባላንስ (ፖይንት)፦</b> <code>${uPoints} ፖይንት (${uPoints} ብር)</code>\n` +
+                    `🔗 <b>የጋበዘው ሰው (Invited By)፦</b> ${inviterDetails}`;
+
+                await sendTelegram('sendMessage', { chat_id: chatId, text: infoMsg, parse_mode: "HTML" });
+            } else {
+                await sendTelegram('sendMessage', { 
+                    chat_id: chatId, 
+                    text: `❌ <b>ይቅርታ!</b> ID <code>${targetId}</code> ያለው ተጠቃሚ በቦቱ ዳታቤዝ ውስጥ አልተገኘም።`,
+                    parse_mode: "HTML"
+                });
+            }
+            return res.sendStatus(200); // ✨ ሰርቨሩ እዚህ ላይ ስራውን እንዲያቆም የተጨመረች ወሳኝ መስመር!
+        }
+
         else if (text.startsWith("/reply ")) {
             const parts = text.split(" ");
             const targetId = parts[1];
@@ -461,12 +502,10 @@ app.post('/api/telegram-webhook', async (req, res) => {
             if (users[targetId] && users[targetId].invited_by) {
                 const inviterId = users[targetId].invited_by;
                 if (users[inviterId]) {
-                    // 50 ፖይንት (ብር) ጨምር
                     users[inviterId].points = (users[inviterId].points || 0) + 50;
                     saveUsers(users);
                     syncUserToGoogle(inviterId, users[inviterId]);
 
-                    // ለጋባዡ ሰው የደስታ ማሳወቂያ መላክ
                     await sendTelegram('sendMessage', {
                         chat_id: inviterId,
                         text: `🎉 <b>እንኳን ደስ አለዎት!</b>\n\nእርስዎ የጋበዙት ደንበኛ (<b>${telegramName}</b>) መጽሐፉን ስለገዙ <b>50 ብር (50 ፖይንት)</b> አካውንትዎ ላይ ተጨምሯል!`,
@@ -494,7 +533,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 parse_mode: "HTML"
             });
         }
-    } 
+    }
     else if (!text.startsWith("/")) {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
