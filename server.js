@@ -18,7 +18,7 @@ const NEW_BOT_TOKEN = process.env.NEW_BOT_TOKEN || process.env.BOT_TOKEN;
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : [];
 const WEB_URL = process.env.WEB_URL; 
 const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
-const BOT_USERNAME = process.env.BOT_USERNAME || "thenegedrasbot"; // ✨ እዚህ ጋር ተጨምሯል!
+const BOT_USERNAME = process.env.BOT_USERNAME || "thenegedrasbot"; 
 
 const DB_FILE = path.join(__dirname, 'users.json');
 
@@ -168,7 +168,7 @@ app.post('/api/order', async (req, res) => {
     }
 });
 
-// 2. ቴሌግราม ቦት ኮማንዶችን ለማስተናገድ (Webhook)
+// 2. ቴሌግራም ቦት ኮማንዶችን ለማስተናገድ (Webhook)
 app.post('/api/telegram-webhook', async (req, res) => {
     const update = req.body;
     if (!update.message) return res.sendStatus(200);
@@ -321,7 +321,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // --- 👥 ሪፈራል እና ባላንስ በተኖች አያያዝ ---
     else if (text === "👥 የእኔ ሪፈራል ሊንክ") {
-        // ✨ አስተማማኝ ሊንክ አሰራር (Render ላይ ከተጫነው ተለዋዋጭ ይነበባል)
         const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`; 
         
         const refText = `👥 <b>የእርስዎ መጋበዣ ሊንክ (Referral Link)</b>\n\n` +
@@ -346,11 +345,9 @@ app.post('/api/telegram-webhook', async (req, res) => {
     // --- 📥 ብር ማውጫ (Withdraw) በተን መጫን ---
     else if (text === "📥 ብር ማውጫ (Withdraw)") {
         const currentPoints = users[userId].points || 0;
-        
-        // 📅 የዛሬውን ቀን መፈተሽ (0 = እሁድ፣ 1 = ሰኞ ... 6 = ቅዳሜ)
         const today = new Date().getDay(); 
         
-        if (today !== 0) { // ⚠️ እሁድ ካልሆነ (ከእሁድ ውጪ ከሆነ)
+        if (today !== 0) { 
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
                 text: `📅 <b>የክፍያ ቀን አይደለም!</b>\n\nየሪፈራል ክፍያ መጠየቅ የሚቻለው <b>እሁድ ቀን ብቻ</b> ነው። እባክዎን እሁድ ቀን ማለዳ ላይ መጥተው ይጠይቁ። ስላረዱን እናመሰግናለን! 🙏`, 
@@ -358,7 +355,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 ...mainKeyboard 
             });
         } 
-        else if (currentPoints < 50) { // 💰 ባላንሱ ከ 50 በታች ከሆነ
+        else if (currentPoints < 50) { 
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
                 text: `❌ <b>ይቅርታ፣ ማውጣት አይችሉም!</b>\n\nየያዙት መጠን <code>${currentPoints} ብር</code> ነው። ክፍያ ለመጠየቅ ቢያንስ <b>50 ብር</b> ሊኖርዎት ይገባል። ሰዎችን በመጋበዝ ማሳደግ ይችላሉ!`, 
@@ -367,7 +364,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
             });
         } 
         else {
-            // ተጠቃሚው መረጃ ማስገባት እንዲጀምር ስቴት መቀየር
             users[userId].withdraw_step = "awaiting_telebirr_phone";
             saveUsers(users);
             
@@ -375,7 +371,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 chat_id: chatId, 
                 text: `📱 <b>ደረጃ 1/2፦ የቴሌብር ስልክ ቁጥር</b>\n\nእባክዎን ብሩ እንዲላክበት የሚፈልጉትን የ <b>ቴሌብር (telebirr)</b> ስልክ ቁጥርዎን ብቻ ይጻፉልን፦`, 
                 parse_mode: "HTML",
-                reply_markup: { remove_keyboard: true } // ኪቦርዱን ለጊዜው መደበቅ
+                reply_markup: { remove_keyboard: true } 
             });
         }
         return res.sendStatus(200);
@@ -397,7 +393,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 });
                 await sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
             }
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200); 
         }
 
         else if (text.startsWith("/broadcast ")) {
@@ -418,7 +414,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     await sendTelegram('sendMessage', { chat_id: chatId, text: `❌ የብሮድካስት ስህተት` });
                 }
             }
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200); 
         }
 
         else if (text.startsWith("/referral ")) {
@@ -459,36 +455,66 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     parse_mode: "HTML"
                 });
             }
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200); 
         }
 
-        else if (text.startsWith("/reply ")) {
-            const parts = text.split(" ");
-            const targetId = parts[1];
-            let replyText = text.replace(`/reply ${targetId} `, "");
+        // ✨ 🛠️ አዲሱ ባለ ፎቶ እና ጽሑፍ የጋራ /reply ሎጂክ እዚህ ጋር ገብቷል!
+        else if (text.startsWith("/reply ") || (msg.photo && msg.caption && msg.caption.startsWith("/reply "))) {
+            const isPhoto = msg.photo ? true : false;
+            const captionOrText = isPhoto ? msg.caption : text;
             
+            const parts = captionOrText.split(" ");
+            const targetId = parts[1];
+            
+            let replyText = captionOrText.replace(`/reply ${targetId} `, "");
+            
+            if (!targetId || isNaN(targetId)) {
+                await sendTelegram('sendMessage', { 
+                    chat_id: chatId, 
+                    text: "❌ <b>ስህተት!</b> እባክህ የተጠቃሚውን ID በትክክል አስገባ።\nምሳሌ፦ <code>/reply 123456789 መልእክትህ...</code>",
+                    parse_mode: "HTML"
+                });
+                return res.sendStatus(200);
+            }
+
             let telegramName = "ተጠቃሚ";
             try {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
             } catch (e) {}
 
-            await sendTelegram('sendMessage', { chat_id: targetId, text: `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}\n\nነጋድራሱ`, parse_mode: "HTML" });
+            const formattedMsg = `📩 <b>ከነጋድራሱ የተላከ ምላሽ:</b>\n\n${replyText}\n\nነጋድራሱ`;
+
+            if (isPhoto) {
+                const highestResPhoto = msg.photo[msg.photo.length - 1].file_id;
+                await sendTelegram('sendPhoto', {
+                    chat_id: targetId,
+                    photo: highestResPhoto,
+                    caption: formattedMsg,
+                    parse_mode: "HTML"
+                });
+            } else {
+                await sendTelegram('sendMessage', { 
+                    chat_id: targetId, 
+                    text: formattedMsg, 
+                    parse_mode: "HTML" 
+                });
+            }
             
             await sendTelegram('sendMessage', { 
                 chat_id: chatId, 
-                text: `✅ ምላሹ ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
+                text: `✅ ምላሹ (በ${isPhoto ? "ፎቶ" : "ጽሑፍ"}) ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
                 parse_mode: "HTML" 
             });
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200);
         }
 
         else if (text === "/stats") {
             const total = Object.keys(users).length;
             await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200); 
         }
 
-        // 📥 የፋይል መላኪያ (እዚህ ጋር ነው የሪፈራል ፖይንት የሚታሰበው)
+        // 📥 የፋይል መላኪያ 
         else if (msg.document && msg.caption && msg.caption.startsWith("/sendfile ")) {
             const parts = msg.caption.trim().split(/\s+/);
             const targetId = parts[1];
@@ -508,7 +534,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 if (users[targetId] && users[targetId].name) telegramName = users[targetId].name;
             } catch (e) {}
 
-            // 🔥 የሪፈራል ፖይንት ስሌት 🔥
             if (users[targetId] && users[targetId].invited_by) {
                 const inviterId = users[targetId].invited_by;
                 if (users[inviterId]) {
@@ -527,7 +552,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             const warningMsg = `📩 <b>ከነጋድራሱ የተላከ መጽሐፍ:</b>\n\n` +
                 `ስላዘዙ እናመሰግናለን! የ"ነጋድራሱ" መጽሐፍ (PDF)。\n\n` +
                 `🔐 <b>የእርስዎ መክፈቻ ፓስወርድ (Password)፦</b> <code>${inputPassword}</code>\n\n` +
-                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት፣ ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግም የሚያስቀጣ ይሆናል።\n\n` +
+                `⚠️ <b>ማስጠንቀቂያ:</b> ይህ መጽሐፍ በባለቤትነት መብት የተጠበቀ እና የእርስዎ ስም እና ስልክ ቁጥር በፒዲኤፉ ውስጥ ተካቶ በፓስወርድ የተቆለፈ ነው። ለሌላ ሰው ማጋራት、ማሰራጨት ወይም መሸጥ በጥብቅ የተከለከለ እና በሕግም የሚያስቀጣ ይሆናል።\n\n` +
                 `ነጋድራሱ`;
                 
             await sendTelegram('sendDocument', {
@@ -542,7 +567,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 text: `✅ ፋይሉ ለደንበኛ <b>${telegramName}</b> ተልኳል። የሪፈራል ቼክም ተከናውኗል።`,
                 parse_mode: "HTML"
             });
-            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
+            return res.sendStatus(200); 
         }
     }
 
@@ -594,6 +619,5 @@ setInterval(async () => {
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    // 🔄 ሰርቨሩ ሲነሳ ወዲያውኑ ከGoogle Sheet መረጃዎችን አውርዶ JSON ፋይሉን ያድሳል
     setTimeout(syncFromGoogleSheets, 5000);
 });
