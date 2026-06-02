@@ -18,6 +18,7 @@ const NEW_BOT_TOKEN = process.env.NEW_BOT_TOKEN || process.env.BOT_TOKEN;
 const ADMIN_IDS = process.env.ADMIN_IDS ? process.env.ADMIN_IDS.split(',') : [];
 const WEB_URL = process.env.WEB_URL; 
 const GOOGLE_SHEET_URL = process.env.GOOGLE_SHEET_URL;
+const BOT_USERNAME = process.env.BOT_USERNAME || "thenegedrasbot"; // ✨ እዚህ ጋር ተጨምሯል!
 
 const DB_FILE = path.join(__dirname, 'users.json');
 
@@ -167,7 +168,7 @@ app.post('/api/order', async (req, res) => {
     }
 });
 
-// 2. ቴሌግራም ቦት ኮማንዶችን ለማስተናገድ (Webhook)
+// 2. ቴሌግราม ቦት ኮማንዶችን ለማስተናገድ (Webhook)
 app.post('/api/telegram-webhook', async (req, res) => {
     const update = req.body;
     if (!update.message) return res.sendStatus(200);
@@ -303,6 +304,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             `1️⃣ <b>"ነጋድራሱ" መጽሐፍ (PDF) ብቻ</b>\n` +
             `2️⃣ <b>30 ምርጥ የቪዲዮዎች ጥቅል (Videos Bundle)</b>\n` +
             `3️⃣ <b>ሁለቱንም በአንድ ላይ (መጽሐፍ + 30 ቪዲዮዎች)</b>\n` +
+            `4️⃣ <b>የእኛ የሲግናል ቻናል</b>\n` +
             `────────────────────\n\n` +
             `⚠️ <b>የአጠቃቀም መመሪያ፦</b>\n` +
             `• ከላይ ካሉት አማራጮች የፈለጉትን ለመምረጥ እና ትዕዛዝ ለመላክ ከታች በግራ በኩል ያለውን <b>'📚 order'</b> የሚለውን <b>Menu Button</b> ይጫኑ。\n` +
@@ -314,18 +316,20 @@ app.post('/api/telegram-webhook', async (req, res) => {
             parse_mode: "HTML",
             ...mainKeyboard
         });
+        return res.sendStatus(200);
     }
 
     // --- 👥 ሪፈራል እና ባላንስ በተኖች አያያዝ ---
     else if (text === "👥 የእኔ ሪፈራል ሊንክ") {
-        const botUsername = msg.via_bot ? msg.via_bot.username : 'የቦትህ_ዩዘርኔም';
-        const refLink = `https://t.me/${botUsername}?start=ref_${userId}`; 
+        // ✨ አስተማማኝ ሊንክ አሰራር (Render ላይ ከተጫነው ተለዋዋጭ ይነበባል)
+        const refLink = `https://t.me/${BOT_USERNAME}?start=ref_${userId}`; 
         
         const refText = `👥 <b>የእርስዎ መጋበዣ ሊንክ (Referral Link)</b>\n\n` +
             `ይህንን ሊንክ ለጓደኞችዎ ወይም በየግሩፑ በማጋራት፣ በእርስዎ ሊንክ ገብተው መጽሐፉን በሚገዙት እያንዳንዱ ሰው <b>50 ብር (50 ፖይንት)</b> ያግኙ!💰\n\n` +
             `🔗 <b>የእርስዎ ሊንክ፦</b>\n<code>${refLink}</code>`;
             
         await sendTelegram('sendMessage', { chat_id: chatId, text: refText, parse_mode: "HTML", ...mainKeyboard });
+        return res.sendStatus(200);
     }
 
     else if (text === "💰 የእኔ ባላንስ") {
@@ -336,6 +340,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             `<i>*ማሳሰቢያ: ክፍያ ለመጠየቅ ቢያንስ 50 ፖይንት ሊኖርዎት ይገባል።*</i>`;
             
         await sendTelegram('sendMessage', { chat_id: chatId, text: balanceText, parse_mode: "HTML", ...mainKeyboard });
+        return res.sendStatus(200);
     }
 
     // --- 📥 ብር ማውጫ (Withdraw) በተን መጫን ---
@@ -373,10 +378,11 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 reply_markup: { remove_keyboard: true } // ኪቦርዱን ለጊዜው መደበቅ
             });
         }
+        return res.sendStatus(200);
     }
 
     // --- የአድሚን ኮማንዶች ---
-    else if (isAdmin) {
+    if (isAdmin) {
         if (text === "/users") {
             const userKeys = Object.keys(users);
             if (userKeys.length === 0) {
@@ -391,6 +397,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 });
                 await sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
             }
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
 
         else if (text.startsWith("/broadcast ")) {
@@ -411,6 +418,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     await sendTelegram('sendMessage', { chat_id: chatId, text: `❌ የብሮድካስት ስህተት` });
                 }
             }
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
 
         else if (text.startsWith("/referral ")) {
@@ -451,7 +459,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
                     parse_mode: "HTML"
                 });
             }
-            return res.sendStatus(200); // ✨ ሰርቨሩ እዚህ ላይ ስራውን እንዲያቆም የተጨመረች ወሳኝ መስመር!
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
 
         else if (text.startsWith("/reply ")) {
@@ -471,11 +479,13 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 text: `✅ ምላሹ ለደንበኛ <b>${telegramName}</b> (<code>${targetId}</code>) ተልኳል።`,
                 parse_mode: "HTML" 
             });
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
 
         else if (text === "/stats") {
             const total = Object.keys(users).length;
             await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
 
         // 📥 የፋይል መላኪያ (እዚህ ጋር ነው የሪፈራል ፖይንት የሚታሰበው)
@@ -532,15 +542,18 @@ app.post('/api/telegram-webhook', async (req, res) => {
                 text: `✅ ፋይሉ ለደንበኛ <b>${telegramName}</b> ተልኳል። የሪፈራል ቼክም ተከናውኗል።`,
                 parse_mode: "HTML"
             });
+            return res.sendStatus(200); // ✨ ስራው እዚህ እንዲቆም
         }
     }
-    else if (!text.startsWith("/")) {
+
+    // --- ተራ ደንበኛ መልእክት ሲልክ ብቻ (አድሚን ካልሆነ) ---
+    if (!text.startsWith("/")) {
         for (const adminId of ADMIN_IDS) {
             await sendTelegram('sendMessage', {
                 chat_id: adminId,
                 text: `📬 <b>አዲስ መልእክት ከደንበኛ!</b>\n\n` +
                       `👤 <b>የቴሌግራም ስም:</b> ${msg.from.first_name}\n` +
-                      `✈️ <b>Username:</b> ${msg.from.username ? '@'+msg.from.username : "የለውም"}\n` +
+                      `✈ *Username:* ${msg.from.username ? '@'+msg.from.username : "የለውም"}\n` +
                       `🆔 <b>ID:</b> <code>${userId}</code>\n\n` +
                       `💬 <b>መልእክት:</b> ${text}\n\n` +
                       `────────────────────\n` +
