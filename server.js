@@ -408,55 +408,60 @@ app.post('/api/telegram-webhook', async (req, res) => {
         else if (text.startsWith("/broadcast ")) {
             const broadcastMsg = text.replace("/broadcast ", "");
             
-            // 1. መጀመሪያ በአካባቢው (users.json) ፋይል ውስጥ ያሉትን IDs በሙሉ እንሰበስባለን
-            let allUniqueIds = new Set(Object.keys(users)); 
+            // 🚨 1. ለቴሌግራም ወዲያውኑ "እሺ ደርሶኛል" ብሎ መመለስ (ይህ መልእክቱ ድጋሚ እንዳይመጣ ይከላከላል)
+            res.sendStatus(200); 
 
-            // 2. በመቀጠል ከGoogle Sheets ላይ ያሉትን IDs እናመጣለን
-            if (GOOGLE_SHEET_URL) {
-                try {
-                    const response = await axios.post(GOOGLE_SHEET_URL, { action: "get_all_users" });
-                    if (response.data && response.data.success && response.data.users) {
-                        const googleUsers = response.data.users;
-                        // የጎግል ሺቶቹን የደንበኛ IDs ወደ ስብስቡ እንጨምራለን (ባይደጋገሙ ይመረጣል)
-                        Object.keys(googleUsers).forEach(uid => {
-                            if (uid && uid !== "N/A") allUniqueIds.add(uid.toString());
-                        });
-                    }
-                } catch (err) {
-                    console.error("⚠️ Broadcast sync from Google Sheets failed, using local file only:", err.message);
-                }
-            }
+            // 🚨 2. የማሰራጨት ስራውን በጀርባ (Background) በራሱ ፍጥነት እንዲያከናውን ማድረግ
+            (async () => {
+                let allUniqueIds = new Set(Object.keys(users)); 
 
-            // 3. መልእክቱን ለተሰበሰቡት ለሁሉም ተጠቃሚዎች መላክ እንጀምራለን
-            let count = 0;
-            let failedCount = 0;
-            
-            await sendTelegram('sendMessage', { chat_id: chatId, text: `⏳ ብሮድካስት መላክ ተጀምሯል... ለ ${allUniqueIds.size} ተጠቃሚዎች በመላክ ላይ ነው።` });
-
-            for (const uid of allUniqueIds) {
-                if (uid && uid !== "N/A") {
+                if (GOOGLE_SHEET_URL) {
                     try {
-                        await sendTelegram('sendMessage', { 
-                            chat_id: uid, 
-                            text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, 
-                            parse_mode: "HTML" 
-                        });
-                        count++;
-                        // በቴሌግራም ፍጥነት ገደብ (Rate Limit) እንዳይቆለፍ በየመልእክቱ መሃል ጥቂት ሚሊሰከንዶች ማረፍ
-                        await new Promise(resolve => setTimeout(resolve, 50)); 
-                    } catch (e) {
-                        failedCount++;
+                        const response = await axios.post(GOOGLE_SHEET_URL, { action: "get_all_users" });
+                        if (response.data && response.data.success && response.data.users) {
+                            const googleUsers = response.data.users;
+                            Object.keys(googleUsers).forEach(uid => {
+                                if (uid && uid !== "N/A") allUniqueIds.add(uid.toString());
+                            });
+                        }
+                    } catch (err) {
+                        console.error("⚠️ Broadcast sync from Google Sheets failed, using local file only:", err.message);
                     }
                 }
-            }
-            await sendTelegram('sendMessage', { 
-                chat_id: chatId, 
-                text: `✅ <b>ብሮድካስት ተጠናቋል!</b>\n\n🎯 በተሳካ ሁኔታ የደረሳቸው፦ <b>${count}</b>\n❌ ያልደረሳቸው (ቦቱን ብሎክ ያደረጉ/ያጠፉ)፦ <b>${failedCount}</b>`,
-                parse_mode: "HTML"
-            });
-            return res.sendStatus(200); 
-        }
 
+                let count = 0;
+                let failedCount = 0;
+                
+                // ለላከው አድሚን መላክ መጀመሩን በቦቱ ማሳወቅ
+                await sendTelegram('sendMessage', { chat_id: chatId, text: `⏳ ብሮድካስት መላክ ተጀምሯል... ለ ${allUniqueIds.size} ተጠቃሚዎች በመላክ ላይ ነው።` });
+
+                for (const uid of allUniqueIds) {
+                    if (uid && uid !== "N/A") { 
+                        try {
+                            await sendTelegram('sendMessage', { 
+                                chat_id: uid, 
+                                text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, 
+                                parse_mode: "HTML" 
+                            });
+                            count++;
+                            // በቴሌግራም ፍጥነት ገደብ (Rate Limit) እንዳይቆለፍ በየመልእክቱ መሃል 50ms ማረፍ
+                            await new Promise(resolve => setTimeout(resolve, 50)); 
+                        } catch (e) {
+                            failedCount++;
+                        }
+                    }
+                }
+                
+                // ሁሉም ተልኮ ሲያልቅ ማጠቃለያውን አንድ ጊዜ ብቻ መላክ
+                await sendTelegram('sendMessage', { 
+                    chat_id: chatId, 
+                    text: `✅ <b>ብሮድካስት ተጠናቋል!</b>\n\n🎯 በተሳካ ሁኔታ የደረሳቸው፦ <b>${count}</b>\n❌ ያልደረሳቸው (ቦቱን ብሎክ ያደረጉ/ያጠፉ)፦ <b>${failedCount}</b>`,
+                    parse_mode: "HTML"
+                });
+            })().catch(err => console.error("⚠️ Background broadcast error:", err));
+
+            return; // የ do-post ሎጂክ እዚህ ላይ ያበቃል
+        }
         else if (text.startsWith("/referral ")) {
             const targetId = text.replace("/referral ", "").trim();
             
