@@ -434,7 +434,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
             await sendTelegram('sendMessage', { chat_id: chatId, text: `⏳ ብሮድካስት መላክ ተጀምሯል... ለ ${allUniqueIds.size} ተጠቃሚዎች በመላክ ላይ ነው።` });
 
             for (const uid of allUniqueIds) {
-                if (uid && uid !== "N/A" && !ADMIN_IDS.includes(uid)) {
+                if (uid && uid !== "N/A") {
                     try {
                         await sendTelegram('sendMessage', { 
                             chat_id: uid, 
