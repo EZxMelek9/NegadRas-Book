@@ -379,41 +379,81 @@ app.post('/api/telegram-webhook', async (req, res) => {
 
     // --- የአድሚን ኮማንዶች ---
     if (isAdmin) {
-        if (text === "/users") {
+       if (text === "/users") {
             const userKeys = Object.keys(users);
             if (userKeys.length === 0) {
                 await sendTelegram('sendMessage', { chat_id: chatId, text: "👥 እስካሁን የተመዘገበ ተጠቃሚ የለም。" });
             } else {
-                let userListMsg = `👥 <b>የቦቱ ተጠቃሚዎች ዝርዝር (${userKeys.length})</b>\n\n`;
+                await sendTelegram('sendMessage', { chat_id: chatId, text: `👥 <b>የተጠቃሚዎች ዝርዝር በመላክ ላይ ነው... (ጠቅላላ፡ ${userKeys.length})</b>`, parse_mode: "HTML" });
+                
+                let userListMsg = "";
+                let batchSize = 15; // ቴሌግራም እንዳይዘጋው በየ 15 ሰው ከፍለን እንልካለን
+                
                 userKeys.forEach((uid, index) => {
                     const uName = users[uid].name || "ስም የሌለው";
                     const uPackage = users[uid].purchased_package ? ` [🛍️ ${users[uid].purchased_package}]` : ""; 
                     const uUser = users[uid].username !== "N/A" ? `@${users[uid].username}` : "ዩዘርኔም የሌለው";
+                    
                     userListMsg += `${index + 1}. 👤 <b>${uName}</b>${uPackage} - ${uUser}\n🆔 <code>${uid}</code>\n💵 ፖይንት: ${users[uid].points || 0}\n────────────────────\n`;
+                    
+                    // 15 ሰው በሞላ ቁጥር መልእክቱን ልኮ አዲሱን ይጀምራል
+                    if ((index + 1) % batchSize === 0 || (index + 1) === userKeys.length) {
+                        sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
+                        userListMsg = ""; // መልእክቱን ባዶ ማድረግ ለቀጣዩ ዝርዝር
+                    }
                 });
-                await sendTelegram('sendMessage', { chat_id: chatId, text: userListMsg, parse_mode: "HTML" });
             }
             return res.sendStatus(200); 
         }
-
         else if (text.startsWith("/broadcast ")) {
             const broadcastMsg = text.replace("/broadcast ", "");
+            
+            // 1. መጀመሪያ በአካባቢው (users.json) ፋይል ውስጥ ያሉትን IDs በሙሉ እንሰበስባለን
+            let allUniqueIds = new Set(Object.keys(users)); 
+
+            // 2. በመቀጠል ከGoogle Sheets ላይ ያሉትን IDs እናመጣለን
             if (GOOGLE_SHEET_URL) {
                 try {
-                    const response = await axios.get(GOOGLE_SHEET_URL);
-                    const idsToBroadcast = response.data.ids || [];
-                    let count = 0;
-                    for (const uid of idsToBroadcast) {
-                        if(uid && uid !== "N/A") {
-                            await sendTelegram('sendMessage', { chat_id: uid, text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, parse_mode: "HTML" });
-                            count++;
-                        }
+                    const response = await axios.post(GOOGLE_SHEET_URL, { action: "get_all_users" });
+                    if (response.data && response.data.success && response.data.users) {
+                        const googleUsers = response.data.users;
+                        // የጎግል ሺቶቹን የደንበኛ IDs ወደ ስብስቡ እንጨምራለን (ባይደጋገሙ ይመረጣል)
+                        Object.keys(googleUsers).forEach(uid => {
+                            if (uid && uid !== "N/A") allUniqueIds.add(uid.toString());
+                        });
                     }
-                    await sendTelegram('sendMessage', { chat_id: chatId, text: `✅ መልእክቱ ለ ${count} ተጠቃሚዎች ተልኳል።` });
                 } catch (err) {
-                    await sendTelegram('sendMessage', { chat_id: chatId, text: `❌ የብሮድካስት ስህተት` });
+                    console.error("⚠️ Broadcast sync from Google Sheets failed, using local file only:", err.message);
                 }
             }
+
+            // 3. መልእክቱን ለተሰበሰቡት ለሁሉም ተጠቃሚዎች መላክ እንጀምራለን
+            let count = 0;
+            let failedCount = 0;
+            
+            await sendTelegram('sendMessage', { chat_id: chatId, text: `⏳ ብሮድካስት መላክ ተጀምሯል... ለ ${allUniqueIds.size} ተጠቃሚዎች በመላክ ላይ ነው።` });
+
+            for (const uid of allUniqueIds) {
+                if (uid && uid !== "N/A" && !ADMIN_IDS.includes(uid)) {
+                    try {
+                        await sendTelegram('sendMessage', { 
+                            chat_id: uid, 
+                            text: `📢 <b>ማስታወቂያ ከነጋድራሱ</b>\n\n${broadcastMsg}\n\nነጋድራሱ`, 
+                            parse_mode: "HTML" 
+                        });
+                        count++;
+                        // በቴሌግራም ፍጥነት ገደብ (Rate Limit) እንዳይቆለፍ በየመልእክቱ መሃል ጥቂት ሚሊሰከንዶች ማረፍ
+                        await new Promise(resolve => setTimeout(resolve, 50)); 
+                    } catch (e) {
+                        failedCount++;
+                    }
+                }
+            }
+            await sendTelegram('sendMessage', { 
+                chat_id: chatId, 
+                text: `✅ <b>ብሮድካስት ተጠናቋል!</b>\n\n🎯 በተሳካ ሁኔታ የደረሳቸው፦ <b>${count}</b>\n❌ ያልደረሳቸው (ቦቱን ብሎክ ያደረጉ/ያጠፉ)፦ <b>${failedCount}</b>`,
+                parse_mode: "HTML"
+            });
             return res.sendStatus(200); 
         }
 
@@ -509,8 +549,31 @@ app.post('/api/telegram-webhook', async (req, res) => {
         }
 
         else if (text === "/stats") {
-            const total = Object.keys(users).length;
-            await sendTelegram('sendMessage', { chat_id: chatId, text: `📊 <b>የቦቱ ስታቲስቲክስ:</b>\n\n👥 ጠቅላላ ተጠቃሚዎች: ${total}`, parse_mode: "HTML" });
+            // 1. በአካባቢው ፋይል ውስጥ ያሉትን IDs መውሰድ
+            let allUniqueIds = new Set(Object.keys(users)); 
+
+            // 2. ከGoogle Sheets ላይ ያሉትንም IDs መጨመር
+            if (GOOGLE_SHEET_URL) {
+                try {
+                    const response = await axios.post(GOOGLE_SHEET_URL, { action: "get_all_users" });
+                    if (response.data && response.data.success && response.data.users) {
+                        const googleUsers = response.data.users;
+                        Object.keys(googleUsers).forEach(uid => {
+                            if (uid && uid !== "N/A") allUniqueIds.add(uid.toString());
+                        });
+                    }
+                } catch (err) {
+                    console.error("⚠️ Stats sync from Google Sheets failed:", err.message);
+                }
+            }
+
+            // 3. እውነተኛውን ጠቅላላ ድምር ማሳየት
+            const totalUsers = allUniqueIds.size;
+            const statsMsg = `📊 <b>የነጋድራሱ ቦት እውነተኛ ስታቲስቲክስ:</b>\n\n` +
+                             `👥 <b>ጠቅላላ እውነተኛ ተጠቃሚዎች፦</b> <code>${totalUsers} ሰው</code>\n` +
+                             `<i>(ይህ ቁጥር የገዙትን፣ በሪፈራል የገቡትንና በ Users ታብ ያሉትን በሙሉ ያጠቃልላል)</i>`;
+
+            await sendTelegram('sendMessage', { chat_id: chatId, text: statsMsg, parse_mode: "HTML" });
             return res.sendStatus(200); 
         }
 
